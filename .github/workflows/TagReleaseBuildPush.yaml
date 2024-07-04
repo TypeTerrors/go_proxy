@@ -30,6 +30,7 @@ jobs:
         run : |
           echo "building go_proxy image"
           echo ${{ secrets.GH_RUNNER }} | docker login ghcr.io -u delduked --password-stdin
+          ls -a
 
       - name: Buildah Action
         uses: redhat-actions/buildah-build@v2
