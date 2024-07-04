@@ -37,8 +37,8 @@ jobs:
         with:
           image: goprx
           tags: ${{ steps.create_tag.outputs.tag }} 
-          context: ./
-          file: ./go_proxy.dockerfile 
+          context: | 
+            ./go_proxy.dockerfile 
      
       - name: Push to ghcr.io
         id: push-image
