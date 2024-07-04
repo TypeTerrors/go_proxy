@@ -6,18 +6,24 @@ on:
 
 jobs:
   setup:
-    runs-on: [self-hosted, Linux, X64, go_proxy]
+    runs-on: gh-runners
     steps:
       - uses: actions/checkout@v3
       
-      - name: Calculate next release tag
+      - uses: benjlevesque/short-sha@v3.0
+        id: short-sha
+        with:
+          length: 6
+
+      - name: Calculate next tag
         id: create_tag
         run: |
-          VERSION=$(git rev-parse --short HEAD)
+          COMMIT_SHA=${{ steps.short-sha.outputs.sha }}
           DATE=$(date +'%Y%m%d')
-          VVERSION=${DATE}v_${VERSION}
-          echo "tag=v_${VERSION}" >> $GITHUB_OUTPUT
-          echo "tagname=${VVERSION}" >> $GITHUB_OUTPUT
+          UNIX_TIME=$(date +%s)
+          HEX_UNIX_TIME=$(printf '%x' $UNIX_TIME)
+          echo "tag=v_${COMMIT_SHA}.${HEX_UNIX_TIME}" >> $GITHUB_OUTPUT
+          echo "tagname=v_${COMMIT_SHA}.${DATE}" >> $GITHUB_OUTPUT
 
       - name: Build and push docker image
         id: docker_build
@@ -31,25 +37,25 @@ jobs:
         id: docker_tag
         run: |
           echo "tagging docker image"
-          docker tag goprx ghcr.io/delduked/go_proxy:latest 
-          docker tag goprx ghcr.io/delduked/go_proxy:${{ steps.create_tag.outputs.tag }} 
+          docker tag goprx ghcr.io/TypeTerrors/go_proxy:latest 
+          docker tag goprx ghcr.io/TypeTerrors/go_proxy:${{ steps.create_tag.outputs.tag }} 
 
       - name: push
         id: docker_push
         run: |
-          echo "docker push ghcr.io/delduked/go_proxy:${{ steps.create_tag.outputs.tag }}"
-          docker push ghcr.io/delduked/go_proxy:latest
-          docker push ghcr.io/delduked/go_proxy:${{ steps.create_tag.outputs.tag }}
+          echo "docker push ghcr.io/TypeTerrors/go_proxy:${{ steps.create_tag.outputs.tag }}"
+          docker push ghcr.io/TypeTerrors/go_proxy:latest
+          docker push ghcr.io/TypeTerrors/go_proxy:${{ steps.create_tag.outputs.tag }}
 
       - name: clean
         id: docker_rmi 
         run: |
           echo "clean up..."
           docker image rmi goprx
-          docker image rmi ghcr.io/delduked/go_proxy:latest
-          docker image rmi ghcr.io/delduked/go_proxy:${{ steps.create_tag.outputs.tag }}
+          docker image rmi ghcr.io/TypeTerrors/go_proxy:latest
+          docker image rmi ghcr.io/TypeTerrors/go_proxy:${{ steps.create_tag.outputs.tag }}
           docker image prune --all --force
-          echo "image ghcr.io/delduked/go_proxy:${{ steps.create_tag.outputs.tag }} was built and pushed succesfully."
+          echo "image ghcr.io/TypeTerrors/go_proxy:${{ steps.create_tag.outputs.tag }} was built and pushed succesfully."
 
       - name: Create Release
         id: create_release
