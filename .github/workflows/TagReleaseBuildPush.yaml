@@ -24,6 +24,9 @@ jobs:
           HEX_UNIX_TIME=$(printf '%x' $UNIX_TIME)
           echo "tag=v_${COMMIT_SHA}.${HEX_UNIX_TIME}" >> $GITHUB_OUTPUT
           echo "tagname=v_${COMMIT_SHA}.${DATE}" >> $GITHUB_OUTPUT
+      
+      - name: Install docker
+        uses: papodaca/install-docker-action@main
 
       - name: Build and push docker image
         id: docker_build
