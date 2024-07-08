@@ -7,7 +7,26 @@ on:
 jobs:
   setup:
     runs-on: type-terrors-scale-set
+    container:
+      image: ubuntu:latest
+    services:
+      docker:
+        image: docker:dind
+        options: --privileged --shm-size=2g
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock:ro
     steps:
+
+      - name: Install Docker
+        run: |
+          apt-get update
+          apt-get install -y docker.io          
+
+      - name: Test Docker
+        run: |
+          docker version
+          docker info  
+
       - uses: actions/checkout@v3
       
       - uses: benjlevesque/short-sha@v3.0
@@ -24,34 +43,42 @@ jobs:
           HEX_UNIX_TIME=$(printf '%x' $UNIX_TIME)
           echo "tag=v_${COMMIT_SHA}.${HEX_UNIX_TIME}" >> $GITHUB_OUTPUT
           echo "tagname=v_${COMMIT_SHA}.${DATE}" >> $GITHUB_OUTPUT
-      - name: Docker login
+
+      - name: Build and push docker image
         id: docker_build
         run : |
           echo "building go_proxy image"
           echo ${{ secrets.GH_RUNNER }} | docker login ghcr.io -u delduked --password-stdin
-          ls -a
+          docker builder prune --all --force
+          docker build -t goprx ./ -f ./go_proxy.dockerfile --no-cache
 
-      - name: Docker build
-        id: docker-build
-        uses: redhat-actions/buildah-build@v2
-        with:
-          image: goprx
-          tags: ${{ steps.create_tag.outputs.tag }} 
-          containerfiles: | 
-            ./go_proxy.dockerfile  
-     
-      - name: Push Docker image
-        id: push-image
-        uses: redhat-actions/push-to-registry@v2
-        with:
-          image: goprx
-          tags: ${{ steps.create_tag.outputs.tag }} 
-          registry: ghcr.io/typeterrors
-          username: delduked
-          password: ${{ secrets.GH_RUNNER }}
-      
+      - name: Tag docker image
+        id: docker_tag
+        run: |
+          echo "tagging docker image"
+          docker tag goprx ghcr.io/delduked/go_proxy:latest 
+          docker tag goprx ghcr.io/delduked/go_proxy:${{ steps.create_tag.outputs.tag }} 
+
+      - name: push
+        id: docker_push
+        run: |
+          echo "docker push ghcr.io/delduked/go_proxy:${{ steps.create_tag.outputs.tag }}"
+          docker push ghcr.io/delduked/go_proxy:latest
+          docker push ghcr.io/delduked/go_proxy:${{ steps.create_tag.outputs.tag }}
+
+      - name: clean
+        id: docker_rmi 
+        run: |
+          echo "clean up..."
+          docker image rmi goprx
+          docker image rmi ghcr.io/delduked/go_proxy:latest
+          docker image rmi ghcr.io/delduked/go_proxy:${{ steps.create_tag.outputs.tag }}
+          docker image prune --all --force
+          echo "image ghcr.io/delduked/go_proxy:${{ steps.create_tag.outputs.tag }} was built and pushed succesfully."
+
       - name: Create Release
         id: create_release
+        if: steps.docker_build.outcome == 'success'
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GH_RUNNER }}
