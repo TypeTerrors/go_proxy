@@ -36,24 +36,23 @@ jobs:
         id: docker_tag
         run: |
           echo "tagging docker image"
-          docker tag goprx ghcr.io/TypeTerrors/go_proxy:latest 
-          docker tag goprx ghcr.io/TypeTerrors/go_proxy:${{ steps.create_tag.outputs.tag }} 
+          docker tag goprx ghcr.io/typeterrors/go_proxy:latest 
+          docker tag goprx ghcr.io/typeterrors/go_proxy:${{ steps.create_tag.outputs.tag }} 
 
       - name: push
         id: docker_push
         run: |
-          echo "docker push ghcr.io/TypeTerrors/go_proxy:${{ steps.create_tag.outputs.tag }}"
-          docker push ghcr.io/TypeTerrors/go_proxy:latest
-          docker push ghcr.io/TypeTerrors/go_proxy:${{ steps.create_tag.outputs.tag }}
+          echo "docker push ghcr.io/typeterrors/go_proxy:${{ steps.create_tag.outputs.tag }}"
+          docker push ghcr.io/typeterrors/go_proxy:latest
+          docker push ghcr.io/typeterrors/go_proxy:${{ steps.create_tag.outputs.tag }}
 
       - name: clean
         id: docker_rmi 
         run: |
           echo "clean up..."
           docker image rmi goprx
-          docker image rmi ghcr.io/TypeTerrors/go_proxy:latest
-          docker image rmi ghcr.io/TypeTerrors/go_proxy:${{ steps.create_tag.outputs.tag }}
-          docker image prune --all --force
+          docker image rmi ghcr.io/typeterrors/go_proxy:latest
+          docker image rmi ghcr.io/typeterrors/go_proxy:${{ steps.create_tag.outputs.tag }}
           echo "image ghcr.io/TypeTerrors/go_proxy:${{ steps.create_tag.outputs.tag }} was built and pushed succesfully."
 
       - name: Create Release
