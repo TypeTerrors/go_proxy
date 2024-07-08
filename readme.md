@@ -73,12 +73,4 @@ If you would like to contribute to the project, follow these steps:
 4. Push your changes to your fork.
 5. Submit a pull request to the main repository's `master` branch.
 
-### License
-
-Distributed under the MIT License. See `LICENSE` for more information.
-
-### Contact
-
-For any inquiries or feedback, please contact [Your Name](mailto:your_email@example.com).
-
 Project Link: [https://github.com/your_username/your_project](https://github.com/your_username/your_project)
