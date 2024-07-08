@@ -6,7 +6,7 @@ on:
 
 jobs:
   setup:
-    runs-on: type-terrors-arc
+    runs-on: type-terrors-scale-set
     steps:
       - uses: actions/checkout@v3
       
