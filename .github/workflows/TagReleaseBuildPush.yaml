@@ -37,8 +37,8 @@ jobs:
         with:
           image: goprx
           tags: ${{ steps.create_tag.outputs.tag }} 
-          context: ./
-          file: ./go_proxy.dockerfile 
+          containerfiles: | 
+            ./go_proxy.dockerfile  
      
       - name: Push Docker image
         id: push-image
