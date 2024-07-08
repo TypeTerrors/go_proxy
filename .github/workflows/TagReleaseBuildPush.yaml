@@ -7,26 +7,7 @@ on:
 jobs:
   setup:
     runs-on: type-terrors-scale-set
-    container:
-      image: ubuntu:latest
-    services:
-      docker:
-        image: docker:dind
-        options: --privileged --shm-size=2g
-        volumes:
-          - /var/run/docker.sock:/var/run/docker.sock:ro
     steps:
-
-      - name: Install Docker
-        run: |
-          apt-get update
-          apt-get install -y docker.io          
-
-      - name: Test Docker
-        run: |
-          docker version
-          docker info  
-
       - uses: actions/checkout@v3
       
       - uses: benjlevesque/short-sha@v3.0
@@ -49,7 +30,6 @@ jobs:
         run : |
           echo "building go_proxy image"
           echo ${{ secrets.GH_RUNNER }} | docker login ghcr.io -u delduked --password-stdin
-          docker builder prune --all --force
           docker build -t goprx ./ -f ./go_proxy.dockerfile --no-cache
 
       - name: Tag docker image
