@@ -1,0 +1,23 @@
+{{- range .Values.applications }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .name }}
+spec:
+  tls:
+    - hosts:
+        - {{ .host }}
+      secretName: {{ .secretName }}
+  rules:
+    - host: {{ .host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .name }}
+                port:
+                  number: 80
+{{- end }}
