@@ -1,32 +1,35 @@
-{{- range .Values.applications }}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .name }}
+  name: {{ application.name }}
 spec:
-  replicas: {{ .replicas }}
+  replicas: {{ application.replicas }}
   selector:
     matchLabels:
-      app: {{ .name }}
+      app: {{ application.name }}
   template:
     metadata:
       labels:
-        app: {{ .name }}
+        app: {{ application.name }}
     spec:
-      {{- if .imagePullSecrets }}
+      {{- if application.imagePullSecrets }}
       imagePullSecrets:
-        {{- toYaml .imagePullSecrets | nindent 8 }}
+        {{- toYaml application.imagePullSecrets | nindent 8 }}
       {{- end }}
       containers:
-        - name: {{ .name }}
+        - name: {{ application.name }}
           image: "{{ $.Values.global.image.repository }}:{{ $.Values.global.image.tag }}"
           command: ["./main"]
-          args: {{ toJson .args }}
+          env:
+            - name: JWT_SECRET
+              value: {{ application.JWT_SECRET }}
+            - name: NAMESPACE
+              value: {{ applicaiton.name }}
+          args: {{ toJson application.args }}
           ports:
             - containerPort: 80
-          {{- if .resources }}
+          {{- if application.resources }}
           resources:
-            {{- toYaml .resources | nindent 12 }}
+            {{- toYaml application.resources | nindent 12 }}
           {{- end }}
-{{- end }}

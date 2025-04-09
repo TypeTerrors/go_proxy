@@ -1,23 +1,21 @@
-{{- range .Values.applications }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ .name }}
+  name: {{ application.name }}
 spec:
   tls:
     - hosts:
-        - {{ .host }}
-      secretName: {{ .secretName }}
+        - {{ application.host }}
+      secretName: {{ application.secretName }}
   rules:
-    - host: {{ .host }}
+    - host: {{ application.host }}
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: {{ .name }}
+                name: {{ application.name }}
                 port:
-                  number: 80
-{{- end }}
+                  number: 443

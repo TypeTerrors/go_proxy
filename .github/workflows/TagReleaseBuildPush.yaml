@@ -1,7 +1,8 @@
 name: BuildPushDeploy
 
 on:
-    push:
+    pull_request:
+        types: [closed]
         branches:
             - main
             - dev
@@ -23,11 +24,9 @@ jobs:
             id: create_tag
             run: |
                 COMMIT_SHA=${{ steps.short-sha.outputs.sha }}
-                DATE=$(date +'%Y%m%d')
-                UNIX_TIME=$(date +%s)
-                HEX_UNIX_TIME=$(printf '%x' $UNIX_TIME)
-                echo "tag=v_${COMMIT_SHA}.${HEX_UNIX_TIME}" >> $GITHUB_OUTPUT
-                echo "tagname=v_${COMMIT_SHA}.${DATE}" >> $GITHUB_OUTPUT
+                PR_NUMBER=${{ github.event.pull_request.number }}
+                echo "tag=v_${COMMIT_SHA}.${PR_NUMBER}" >> $GITHUB_OUTPUT
+                echo "tagname=v_${COMMIT_SHA}.${PR_NUMBER}" >> $GITHUB_OUTPUT 
 
           - name: Log in to GitHub Container Registry
             run: |
@@ -84,5 +83,7 @@ jobs:
             # Deploy using Helm
           - name: Deploy with Helm
             run: |
-                helm upgrade --install go_proxy ./charts \
-                    --set global.image.tag=${{ steps.create_tag.outputs.tag }}
+                helm upgrade --install go_proxy ./charts --namespace "aproxynate" \
+                    --set global.image.tag=${{ steps.create_tag.outputs.tag }} \
+                    --set application.JWT_SECRET=${{ secrets.JWT_SECRET }} \
+                    --set application.name="aproxynate"

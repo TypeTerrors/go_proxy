@@ -3,8 +3,8 @@ global:
     repository: ghcr.io/<example-user>/<example-image>
     tag: "latest"  # This will be overridden by the Helm command
 
-applications:
-  - name: example-name
+application:
+    name: example-name
     host: example.com
     secretName: example.io-secret
     replicas: 1

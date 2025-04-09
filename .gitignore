@@ -3,3 +3,4 @@
 *.key
 data/
 charts/values.yaml
+prx-kubeconfig.yaml
