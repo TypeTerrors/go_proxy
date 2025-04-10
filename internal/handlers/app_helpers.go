@@ -78,10 +78,6 @@ func (a *App) Response(w http.ResponseWriter, data interface{}, statusCode int) 
 	}
 }
 
-func (a *App) Err(err string, messages ...any) error {
-	return fmt.Errorf(err, messages...)
-}
-
 func (a *App) readRedirectRecord(host string) (string, bool) {
 	a.mu.Lock()
 	targetURL, ok := a.RedirectRecords[host]
@@ -98,4 +94,9 @@ func (a *App) setRedirectRecords(from, to string) {
 	a.mu.Lock()
 	a.RedirectRecords[from] = to
 	a.mu.Unlock()
+}
+
+// Use this simply to avoid typing out extra syntax for fmt.Errorf(). Because its shorter that why...
+func (a *App) Err(err string, messages ...any) error {
+	return fmt.Errorf(err, messages...)
 }
