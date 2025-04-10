@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -23,7 +22,7 @@ func (a *App) HandleRequests(w http.ResponseWriter, req *http.Request) {
 
 	parsedURL, err := url.Parse(targetURL)
 	if err != nil {
-		a.Response(w, fmt.Errorf("invalid url %s", err), http.StatusInternalServerError)
+		a.Response(w, a.Err("invalid url %s", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -35,24 +34,24 @@ func (a *App) HandleAddNewProxy(w http.ResponseWriter, req *http.Request) {
 
 	_, err := a.Jwt.ValidateJWT(req.Header["Authorization"][0])
 	if err != nil {
-		a.Response(w, fmt.Errorf("authentcation failed %s", err), http.StatusInternalServerError)
+		a.Response(w, a.Err("authentcation failed %s", err), http.StatusInternalServerError)
 		return
 	}
 
 	var body models.AddNewProxy
 	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
-		a.Response(w, fmt.Errorf("request body decode error %s", err), http.StatusInternalServerError)
+		a.Response(w, a.Err("request body decode error %s", err), http.StatusInternalServerError)
 		return
 	}
 
 	if err := utils.ValidateFields(body); err != "" {
-		a.Response(w, fmt.Errorf("validation error %s", err), http.StatusInternalServerError)
+		a.Response(w, a.Err("validation error %s", err), http.StatusInternalServerError)
 		return
 	}
 
 	err = a.Kube.AddNewProxy(body, a.namespace)
 	if err != nil {
-		a.Response(w, fmt.Errorf("configuration error: %s", err), http.StatusInternalServerError)
+		a.Response(w, a.Err("configuration error: %s", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -65,7 +64,7 @@ func (a *App) HandleDeleteProxy(w http.ResponseWriter, req *http.Request) {
 
 	_, err := a.Jwt.ValidateJWT(req.Header["Authorization"][0])
 	if err != nil {
-		a.Response(w, fmt.Errorf("authentication failed"), http.StatusUnauthorized)
+		a.Response(w, a.Err("authentication failed"), http.StatusUnauthorized)
 	}
 
 	var body models.AddNewProxy
@@ -75,13 +74,13 @@ func (a *App) HandleDeleteProxy(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if errMsg := utils.ValidateFields(body); errMsg != "" {
-		a.Response(w, fmt.Errorf("validation error: %s", errMsg), http.StatusBadRequest)
+		a.Response(w, a.Err("validation error: %s", errMsg), http.StatusBadRequest)
 		return
 	}
 
 	err = a.Kube.DeleteProxy(a.namespace, body.From+"-ingress", body.From+"-tls")
 	if err != nil {
-		a.Response(w, fmt.Errorf("configuration error %s", err), http.StatusInternalServerError)
+		a.Response(w, a.Err("configuration error %s", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -94,7 +93,7 @@ func (a *App) HandleGetRedirectionRecords(w http.ResponseWriter, req *http.Reque
 
 	_, err := a.Jwt.ValidateJWT(req.Header["Authorization"][0])
 	if err != nil {
-		a.Response(w, fmt.Errorf("authentication failed"), http.StatusUnauthorized)
+		a.Response(w, a.Err("authentication failed"), http.StatusUnauthorized)
 	}
 
 	records, err := a.getAllRedirectionRecords()
@@ -103,7 +102,7 @@ func (a *App) HandleGetRedirectionRecords(w http.ResponseWriter, req *http.Reque
 	}
 
 	if len(records) > 1 {
-		a.Response(w, fmt.Errorf("no redirection records available"), http.StatusNoContent)
+		a.Response(w, a.Err("no redirection records available"), http.StatusNoContent)
 	}
 
 	var res []models.RedirectionRecords

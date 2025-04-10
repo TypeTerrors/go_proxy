@@ -78,6 +78,10 @@ func (a *App) Response(w http.ResponseWriter, data interface{}, statusCode int) 
 	}
 }
 
+func (a *App) Err(err string, messages ...any) error {
+	return fmt.Errorf(err, messages...)
+}
+
 func (a *App) readRedirectRecord(host string) (string, bool) {
 	a.mu.Lock()
 	targetURL, ok := a.RedirectRecords[host]
