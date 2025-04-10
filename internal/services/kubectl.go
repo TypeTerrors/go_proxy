@@ -151,7 +151,10 @@ func (k Kube) DeleteProxy(namespace, ingressName, secret string) error {
 	return nil
 }
 
-func (k Kube) GetProxyMappings(namespace, configMapName string) ([]ProxyMapping, error) {
+func (k Kube) GetProxyMappings(namespace, configMapName string) (map[string]string, error) {
+
+	res := make(map[string]string)
+
 	cm, err := k.client.CoreV1().ConfigMaps(namespace).Get(context.Background(), configMapName, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get configmap: %v", err)
@@ -167,7 +170,11 @@ func (k Kube) GetProxyMappings(namespace, configMapName string) ([]ProxyMapping,
 		return nil, fmt.Errorf("failed to unmarshal proxy mappings: %v", err)
 	}
 
-	return mappings, nil
+	for _, v := range mappings {
+		res[v.From] = v.To
+	}
+
+	return res, nil
 }
 
 func (k Kube) AddProxyMapping(namespace, configMapName string, newMapping ProxyMapping) error {

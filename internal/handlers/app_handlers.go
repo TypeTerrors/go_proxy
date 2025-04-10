@@ -13,19 +13,17 @@ import (
 )
 
 func (a *App) HandleRequests(w http.ResponseWriter, req *http.Request) {
-	targetURL, ok := utils.RedirectRecords[req.Host]
-	if !ok {
-		a.Log.Error("No redirect record found for host:", "host", req.Host)
-		http.Error(w, "Not Found", http.StatusNotFound)
-		return
+
+	targetURL, err := a.getRedirectionRecords(req.Host)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
 	}
 
-	logger.Log.Info("Proxying request", "host", req.Host, "target", targetURL)
+	logger.Log.Debug("Proxying request", "host", req.Host, "target", targetURL)
 
 	parsedURL, err := url.Parse(targetURL)
 	if err != nil {
-		a.Log.Error("Failed to parse target URL", "target", targetURL, "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		a.Response(w, fmt.Errorf("invalid url %s", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -37,78 +35,94 @@ func (a *App) HandleAddNewProxy(w http.ResponseWriter, req *http.Request) {
 
 	_, err := a.Jwt.ValidateJWT(req.Header["Authorization"][0])
 	if err != nil {
-		http.Error(w, "Authentication failed", http.StatusUnauthorized)
+		a.Response(w, fmt.Errorf("authentcation failed %s", err), http.StatusInternalServerError)
+		return
 	}
 
 	var body models.AddNewProxy
 	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+		a.Response(w, fmt.Errorf("request body decode error %s", err), http.StatusInternalServerError)
 		return
 	}
 
-	if errMsg := utils.ValidateFields(body); errMsg != "" {
-		http.Error(w, fmt.Sprintf("Validation error: %s", errMsg), http.StatusBadRequest)
+	if err := utils.ValidateFields(body); err != "" {
+		a.Response(w, fmt.Errorf("validation error %s", err), http.StatusInternalServerError)
 		return
 	}
 
 	err = a.Kube.AddNewProxy(body, a.namespace)
 	if err != nil {
-		http.Error(w, "Configuration error", http.StatusInternalServerError)
+		a.Response(w, fmt.Errorf("configuration error: %s", err), http.StatusInternalServerError)
 		return
 	}
 
-	a.mu.Lock()
-	a.RedirectRecords[body.From] = body.To
-	a.mu.Unlock()
+	a.setRedirectRecords(body.From, body.To)
 
-	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte("Ingress and TLS secret created successfully"))
+	a.Response(w, nil, http.StatusCreated)
 }
 
 func (a *App) HandleDeleteProxy(w http.ResponseWriter, req *http.Request) {
 
 	_, err := a.Jwt.ValidateJWT(req.Header["Authorization"][0])
 	if err != nil {
-		http.Error(w, "Authentication failed", http.StatusUnauthorized)
+		a.Response(w, fmt.Errorf("authentication failed"), http.StatusUnauthorized)
 	}
 
 	var body models.AddNewProxy
 	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+		a.Response(w, err, http.StatusInternalServerError)
 		return
 	}
 
 	if errMsg := utils.ValidateFields(body); errMsg != "" {
-		http.Error(w, fmt.Sprintf("Validation error: %s", errMsg), http.StatusBadRequest)
+		a.Response(w, fmt.Errorf("validation error: %s", errMsg), http.StatusBadRequest)
 		return
 	}
 
 	err = a.Kube.DeleteProxy(a.namespace, body.From+"-ingress", body.From+"-tls")
 	if err != nil {
-		http.Error(w, "Configuration error", http.StatusInternalServerError)
+		a.Response(w, fmt.Errorf("configuration error %s", err), http.StatusInternalServerError)
 		return
 	}
 
-	a.mu.Lock()
-	delete(a.RedirectRecords, body.From)
-	a.mu.Unlock()
+	a.deleteRedirectRecords(body.From)
 
-	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte("Ingress and TLS secret delete successfully"))
+	a.Response(w, nil, http.StatusCreated)
+}
+
+func (a *App) HandleGetRedirectionRecords(w http.ResponseWriter, req *http.Request) {
+
+	_, err := a.Jwt.ValidateJWT(req.Header["Authorization"][0])
+	if err != nil {
+		a.Response(w, fmt.Errorf("authentication failed"), http.StatusUnauthorized)
+	}
+
+	records, err := a.getAllRedirectionRecords()
+	if err != nil {
+		a.Response(w, err, http.StatusInternalServerError)
+	}
+
+	if len(records) > 1 {
+		a.Response(w, fmt.Errorf("no redirection records available"), http.StatusNoContent)
+	}
+
+	var res []models.RedirectionRecords
+	for i, v := range records {
+		record := models.RedirectionRecords{
+			From: i,
+			To:   v,
+		}
+		res = append(res, record)
+	}
+
+	a.Response(w, res, http.StatusOK)
 }
 
 func (a *App) StatusHandler(w http.ResponseWriter, req *http.Request) {
-	response := struct {
-		Status string `json:"status"`
-		Time   string `json:"time"`
-	}{
+	response := models.Health{
 		Status: "OK",
 		Time:   time.Now().Format(time.RFC3339),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		logger.Log.Error("Failed to encode response", "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
+	a.Response(w, response, http.StatusOK)
 }

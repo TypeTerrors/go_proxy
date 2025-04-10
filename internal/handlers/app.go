@@ -18,9 +18,10 @@ type App struct {
 	RedirectRecords map[string]string
 	mu              sync.Mutex
 	namespace       string
+	name            string
 }
 
-func NewProxy(namespace, secret string, records map[string]string) *App {
+func NewProxy(namespace, name, secret string, records map[string]string) *App {
 
 	kube, err := services.NewKubeClient()
 	if err != nil {
@@ -38,6 +39,7 @@ func NewProxy(namespace, secret string, records map[string]string) *App {
 		RedirectRecords: records,
 		Kube:            kube,
 		namespace:       namespace,
+		name:            name,
 	}
 
 	app.Api = &http.Server{
@@ -63,6 +65,7 @@ func (a *App) CreateRoutes() http.Handler {
 	routes.HandleFunc("POST /", a.HandleRequests)
 	routes.HandleFunc("POST /api/add", a.HandleAddNewProxy)
 	routes.HandleFunc("POST /api/del", a.HandleDeleteProxy)
+	routes.HandleFunc("GET /api/tbl", a.HandleGetRedirectionRecords)
 
 	return a.LoggingMiddleware(routes)
 }

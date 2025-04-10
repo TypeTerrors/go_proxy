@@ -6,3 +6,7 @@ type AddNewProxy struct {
 	Cert string `json:"cert"`
 	Key  string `json:"key"`
 }
+type RedirectionRecords struct {
+	From string `json:"from"`
+	To   string `json:"to"`
+}
