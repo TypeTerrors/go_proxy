@@ -96,7 +96,7 @@ func (a *App) setRedirectRecords(from, to string) {
 	a.mu.Unlock()
 }
 
-// Use this simply to avoid typing out extra syntax for fmt.Errorf(). Because its shorter that why...
+// Use this simply to avoid typing out extra syntax for fmt.Errorf(). Because its shorter thats why...
 func (a *App) Err(err string, messages ...any) error {
 	return fmt.Errorf(err, messages...)
 }
