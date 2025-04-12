@@ -6,11 +6,12 @@ import (
 	"os"
 	"path/filepath"
 	"prx/internal/models"
-
+	
 	"gopkg.in/yaml.v2"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-
+	
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,21 +27,29 @@ type ProxyMapping struct {
 }
 
 func NewKubeClient() (Kube, error) {
-	// Build Kubernetes client configuration from the default kubeconfig location.
-	kubeconfig := filepath.Join(os.Getenv("PRX_KUBE_CONFIG"), ".kube", "config")
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	if err != nil {
-		return Kube{}, err
+	kubeconfigData := os.Getenv("PRX_KUBE_CONFIG")
+	var config *rest.Config
+	var err error
+
+	if kubeconfigData != "" {
+		config, err = clientcmd.RESTConfigFromKubeConfig([]byte(kubeconfigData))
+		if err != nil {
+			return Kube{}, fmt.Errorf("failed to build config from env PRX_KUBE_CONFIG: %v", err)
+		}
+	} else {
+		kubeconfigPath := filepath.Join(os.Getenv("HOME"), ".kube", "config")
+		config, err = clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+		if err != nil {
+			return Kube{}, fmt.Errorf("failed to build config from file %s: %v", kubeconfigPath, err)
+		}
 	}
 
-	kube, err := kubernetes.NewForConfig(config)
+	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		return Kube{}, err
+		return Kube{}, fmt.Errorf("failed to create Kubernetes client: %v", err)
 	}
 
-	return Kube{
-		client: kube,
-	}, nil
+	return Kube{client: clientset}, nil
 }
 
 func (k Kube) AddNewProxy(body models.AddNewProxy, namespace string) error {
@@ -99,7 +108,7 @@ func (k Kube) AddNewProxy(body models.AddNewProxy, namespace string) error {
 										Service: &networkingv1.IngressServiceBackend{
 											Name: "aproxynate",
 											Port: networkingv1.ServiceBackendPort{
-												Number: 80, // TODO: Replace with the actual service port.
+												Number: 443, // TODO: Replace with the actual service port.
 											},
 										},
 									},

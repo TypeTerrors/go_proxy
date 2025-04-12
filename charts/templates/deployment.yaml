@@ -26,6 +26,8 @@ spec:
               value: {{ application.JWT_SECRET }}
             - name: NAMESPACE
               value: {{ applicaiton.name }}
+            - name: PRX_KUBE_CONFIG
+              value: {{ applicaiton.PRX_KUBE_CONFIG }}
           args: {{ toJson application.args }}
           ports:
             - containerPort: 80

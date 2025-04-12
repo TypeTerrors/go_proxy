@@ -1,4 +1,4 @@
-package handlers
+package app
 
 import (
 	"encoding/json"
@@ -32,12 +32,6 @@ func (a *App) HandleRequests(w http.ResponseWriter, req *http.Request) {
 
 func (a *App) HandleAddNewProxy(w http.ResponseWriter, req *http.Request) {
 
-	_, err := a.Jwt.ValidateJWT(req.Header["Authorization"][0])
-	if err != nil {
-		a.Response(w, a.Err("authentcation failed %s", err), http.StatusInternalServerError)
-		return
-	}
-
 	var body models.AddNewProxy
 	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
 		a.Response(w, a.Err("request body decode error %s", err), http.StatusInternalServerError)
@@ -49,7 +43,7 @@ func (a *App) HandleAddNewProxy(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = a.Kube.AddNewProxy(body, a.namespace)
+	err := a.Kube.AddNewProxy(body, a.namespace)
 	if err != nil {
 		a.Response(w, a.Err("configuration error: %s", err), http.StatusInternalServerError)
 		return
@@ -62,11 +56,6 @@ func (a *App) HandleAddNewProxy(w http.ResponseWriter, req *http.Request) {
 
 func (a *App) HandleDeleteProxy(w http.ResponseWriter, req *http.Request) {
 
-	_, err := a.Jwt.ValidateJWT(req.Header["Authorization"][0])
-	if err != nil {
-		a.Response(w, a.Err("authentication failed"), http.StatusUnauthorized)
-	}
-
 	var body models.AddNewProxy
 	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
 		a.Response(w, err, http.StatusInternalServerError)
@@ -78,7 +67,7 @@ func (a *App) HandleDeleteProxy(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = a.Kube.DeleteProxy(a.namespace, body.From+"-ingress", body.From+"-tls")
+	err := a.Kube.DeleteProxy(a.namespace, body.From+"-ingress", body.From+"-tls")
 	if err != nil {
 		a.Response(w, a.Err("configuration error %s", err), http.StatusInternalServerError)
 		return
@@ -90,11 +79,6 @@ func (a *App) HandleDeleteProxy(w http.ResponseWriter, req *http.Request) {
 }
 
 func (a *App) HandleGetRedirectionRecords(w http.ResponseWriter, req *http.Request) {
-
-	_, err := a.Jwt.ValidateJWT(req.Header["Authorization"][0])
-	if err != nil {
-		a.Response(w, a.Err("authentication failed"), http.StatusUnauthorized)
-	}
 
 	records, err := a.getAllRedirectionRecords()
 	if err != nil {

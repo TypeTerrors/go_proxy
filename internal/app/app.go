@@ -1,4 +1,4 @@
-package handlers
+package app
 
 import (
 	"net/http"
@@ -46,6 +46,7 @@ func NewProxy(namespace, name, secret string, records map[string]string) *App {
 		Addr:    ":80",
 		Handler: app.CreateRoutes(),
 	}
+
 	return app
 }
 
@@ -55,17 +56,4 @@ func (a *App) Start() {
 	if err := a.Api.ListenAndServe(); err != nil {
 		a.Log.Fatal("Server failed to start:", "error", err)
 	}
-}
-
-func (a *App) CreateRoutes() http.Handler {
-
-	routes := http.NewServeMux()
-
-	routes.HandleFunc("GET /", a.HandleRequests)
-	routes.HandleFunc("POST /", a.HandleRequests)
-	routes.HandleFunc("POST /api/add", a.HandleAddNewProxy)
-	routes.HandleFunc("POST /api/del", a.HandleDeleteProxy)
-	routes.HandleFunc("GET /api/tbl", a.HandleGetRedirectionRecords)
-
-	return a.LoggingMiddleware(routes)
 }
