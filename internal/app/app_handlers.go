@@ -43,7 +43,7 @@ func (a *App) HandleAddNewProxy(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err := a.Kube.AddNewProxy(body, a.namespace)
+	err := a.Kube.AddNewProxy(body, a.namespace, a.name)
 	if err != nil {
 		a.Response(w, a.Err("configuration error: %s", err), http.StatusInternalServerError)
 		return

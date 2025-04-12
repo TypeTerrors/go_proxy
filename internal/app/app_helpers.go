@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"prx/internal/models"
+	"prx/internal/services"
 )
 
 func (a *App) getRedirectionRecords(host string) (string, error) {
@@ -85,15 +86,38 @@ func (a *App) readRedirectRecord(host string) (string, bool) {
 
 	return targetURL, ok
 }
+
 func (a *App) deleteRedirectRecords(host string) {
+	a.deleteRedirectRecordsInMemory(host)
+	a.deleteRedirectRecordsInCluster(host)
+}
+
+func (a *App) deleteRedirectRecordsInMemory(host string) {
 	a.mu.Lock()
 	delete(a.RedirectRecords, host)
 	a.mu.Unlock()
 }
+
+func (a *App) deleteRedirectRecordsInCluster(host string) {
+	a.Kube.DeleteProxy(a.namespace, host+"-ingress", host+"-tls")
+}
+
 func (a *App) setRedirectRecords(from, to string) {
+	a.setRedirectRecordsInMemory(from, to)
+	a.setRedirectRecordsInCluster(from, to)
+}
+
+func (a *App) setRedirectRecordsInMemory(from, to string) {
 	a.mu.Lock()
 	a.RedirectRecords[from] = to
 	a.mu.Unlock()
+}
+
+func (a *App) setRedirectRecordsInCluster(from, to string) {
+	a.Kube.AddProxyMapping(a.namespace, a.name, services.ProxyMapping{
+		From: from,
+		To:   to,
+	})
 }
 
 // Use this simply to avoid typing out extra syntax for fmt.Errorf(). Because its shorter thats why...

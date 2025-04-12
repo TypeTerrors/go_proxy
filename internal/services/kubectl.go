@@ -52,7 +52,7 @@ func NewKubeClient() (Kube, error) {
 	return Kube{client: clientset}, nil
 }
 
-func (k Kube) AddNewProxy(body models.AddNewProxy, namespace string) error {
+func (k Kube) AddNewProxy(body models.AddNewProxy, namespace, name string) error {
 
 	// Create TLS secret with the provided certificate and key.
 	secretName := body.From + "-tls"
@@ -71,7 +71,7 @@ func (k Kube) AddNewProxy(body models.AddNewProxy, namespace string) error {
 		},
 	}
 
-	_, err := k.client.CoreV1().Secrets("aproxynate").Create(context.Background(), secret, metav1.CreateOptions{})
+	_, err := k.client.CoreV1().Secrets(name).Create(context.Background(), secret, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func (k Kube) AddNewProxy(body models.AddNewProxy, namespace string) error {
 									}(),
 									Backend: networkingv1.IngressBackend{
 										Service: &networkingv1.IngressServiceBackend{
-											Name: "aproxynate",
+											Name: name,
 											Port: networkingv1.ServiceBackendPort{
 												Number: 443, // TODO: Replace with the actual service port.
 											},
@@ -121,7 +121,7 @@ func (k Kube) AddNewProxy(body models.AddNewProxy, namespace string) error {
 		},
 	}
 
-	_, err = k.client.NetworkingV1().Ingresses("aproxynate").Create(context.Background(), ingress, metav1.CreateOptions{})
+	_, err = k.client.NetworkingV1().Ingresses(name).Create(context.Background(), ingress, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}
