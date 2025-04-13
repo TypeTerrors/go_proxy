@@ -23,7 +23,7 @@ func (s *JWTService) GenerateJWT() (string, error) {
 	claims := jwt.RegisteredClaims{
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24 * 30)),
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
-		Subject:   "tradingview",
+		Subject:   "go_proxy",
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(s.Secret)
