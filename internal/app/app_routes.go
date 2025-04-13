@@ -21,6 +21,7 @@ func (a *App) proxyRoutes() http.Handler {
 
 func (a *App) apiRoutes() http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/status", a.StatusHandler)
 	mux.HandleFunc("GET /api/prx", a.HandleGetRedirectionRecords)
 	mux.HandleFunc("POST /api/prx", a.HandleAddNewProxy)
     mux.HandleFunc("PATCH /api/prx", a.HandlePatchProxy)
