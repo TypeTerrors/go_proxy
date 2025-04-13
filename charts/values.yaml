@@ -8,6 +8,7 @@ application:
    host: application's FQDN
    secretName: application's FQDN secret name
    replicas: 2
+   imagePullSecrets: <your-image-pull-secret>
    JWT_SECRET: "your-secret-value"
    PRX_KUBE_CONFIG: "<new users kube config for application>" # edit the shell secript cluster-service-account.yaml to create the service account with the proper permissions
    image:

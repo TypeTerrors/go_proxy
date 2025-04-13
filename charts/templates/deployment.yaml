@@ -1,37 +1,33 @@
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ application.name }}
+  name: "{{ .Values.application.name }}"
 spec:
-  replicas: {{ application.replicas }}
+  replicas: {{ .Values.application.replicas }}
   selector:
     matchLabels:
-      app: {{ application.name }}
+      app: "{{ .Values.application.name }}"
   template:
     metadata:
       labels:
-        app: {{ application.name }}
+        app: "{{ .Values.application.name }}"
     spec:
-      {{- if application.imagePullSecrets }}
       imagePullSecrets:
-        {{- toYaml application.imagePullSecrets | nindent 8 }}
-      {{- end }}
+        - name: "{{ .Values.application.imagePullSecrets }}"
       containers:
-        - name: {{ application.name }}
-          image: "{{ $.Values.global.image.repository }}:{{ $.Values.global.image.tag }}"
+        - name: "{{ .Values.application.name }}"
+          image: "{{ .Values.application.image.repository }}:{{ default $.Values.global.image.tag .Values.application.image.tag }}"
           command: ["./main"]
           env:
             - name: JWT_SECRET
-              value: {{ application.JWT_SECRET }}
+              value: "{{ .Values.application.JWT_SECRET }}"
             - name: NAMESPACE
-              value: {{ applicaiton.name }}
+              value: "{{ .Values.application.name }}"
             - name: PRX_KUBE_CONFIG
-              value: {{ applicaiton.PRX_KUBE_CONFIG }}
-          args: {{ toJson application.args }}
+              value: "{{ .Values.application.PRX_KUBE_CONFIG }}"
           ports:
             - containerPort: 80
-          {{- if application.resources }}
+          {{- if .Values.application.resources }}
           resources:
-            {{- toYaml application.resources | nindent 12 }}
+            {{- toYaml .Values.application.resources | nindent 12 }}
           {{- end }}

@@ -3,11 +3,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ application.name }}
+  name: "{{ .Values.application.name }}"
 spec:
   type: ClusterIP
   selector:
-    app: {{ application.name }}
+    app: "{{ .Values.application.name }}"
   ports:
     - protocol: TCP
       port: 443

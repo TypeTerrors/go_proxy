@@ -106,8 +106,8 @@ jobs:
                     --set application.host=${{ secrets.NAME }}.io \
                     --set application.secretName=${{ secrets.NAME }}.io-secret \
                     --set application.replicas=2 \
-                    --set application.JWT_SECRET=${{ secrets.JWT_SECRET }} \
-                    --set application.PRX_KUBE_CONFIG=${{ secrets.PRX_KUBE_CONFIG }} \
-                    --set application.image.repository=ghcr.io/typeterrors/go_proxy \
+                    --set-string application.JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+                    --set-string application.PRX_KUBE_CONFIG="${{ secrets.PRX_KUBE_CONFIG }}" \
+                    --set-string application.imagePullSecrets="${{ secrets.IMAGE_PULL_SECRET }}" \
                     --set global.image.repository=ghcr.io/typeterrors/go_proxy \
                     --set global.image.tag=${{ steps.create_tag.outputs.tag }}
