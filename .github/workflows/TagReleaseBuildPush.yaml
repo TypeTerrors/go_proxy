@@ -102,7 +102,12 @@ jobs:
           - name: Deploy with Helm
             run: |
                 helm upgrade --install go_proxy ./charts --namespace "${{ secrets.NAME }}" \
-                    --set global.image.tag=${{ steps.create_tag.outputs.tag }} \
+                    --set application.name=${{ secrets.NAME }} \
+                    --set application.host=${{ secrets.NAME }}.io \
+                    --set application.secretName=${{ secrets.NAME }}.io-secret \
+                    --set application.replicas=2 \
                     --set application.JWT_SECRET=${{ secrets.JWT_SECRET }} \
                     --set application.PRX_KUBE_CONFIG=${{ secrets.PRX_KUBE_CONFIG }} \
-                    --set application.name="${{ secrets.NAME }}"
+                    --set application.image.repository=ghcr.io/typeterrors/go_proxy \
+                    --set global.image.repository=ghcr.io/typeterrors/go_proxy \
+                    --set global.image.tag=${{ steps.create_tag.outputs.tag }}
