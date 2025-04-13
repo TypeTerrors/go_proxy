@@ -1,68 +1,113 @@
-name: TagReleaseBuildPush
+name: BuildPushDeploy
+
 on:
-  push:
-    branches:
-      - main
+    pull_request:
+        types: [closed]
+        branches:
+            - main
+            - dev
 
 jobs:
-  setup:
-    runs-on: type-terrors-scale-set
-    steps:
-      - uses: actions/checkout@v3
-      
-      - uses: benjlevesque/short-sha@v3.0
-        id: short-sha
-        with:
-          length: 6
+    build-and-deploy:
+        runs-on: ubuntu-latest
+        steps:
+          - name: Checkout repository
+            uses: actions/checkout@v3
 
-      - name: Calculate next tag
-        id: create_tag
-        run: |
-          COMMIT_SHA=${{ steps.short-sha.outputs.sha }}
-          DATE=$(date +'%Y%m%d')
-          UNIX_TIME=$(date +%s)
-          HEX_UNIX_TIME=$(printf '%x' $UNIX_TIME)
-          echo "tag=v_${COMMIT_SHA}.${HEX_UNIX_TIME}" >> $GITHUB_OUTPUT
-          echo "tagname=v_${COMMIT_SHA}.${DATE}" >> $GITHUB_OUTPUT
+          - name: Get short SHA
+            uses: benjlevesque/short-sha@v3.0
+            id: short-sha
+            with:
+                length: 6
 
-      - name: Build and push docker image
-        id: docker_build
-        run : |
-          echo "building go_proxy image"
-          echo ${{ secrets.GH_RUNNER }} | docker login ghcr.io -u delduked --password-stdin
-          docker build -t goprx ./ -f ./go_proxy.dockerfile --no-cache
+          - name: Calculate next tag
+            id: create_tag
+            run: |
+                COMMIT_SHA=${{ steps.short-sha.outputs.sha }}
+                PR_NUMBER=${{ github.event.pull_request.number }}
+                echo "tag=v_${COMMIT_SHA}.${PR_NUMBER}" >> $GITHUB_OUTPUT
+                echo "tagname=v_${COMMIT_SHA}.${PR_NUMBER}" >> $GITHUB_OUTPUT 
 
-      - name: Tag docker image
-        id: docker_tag
-        run: |
-          echo "tagging docker image"
-          docker tag goprx ghcr.io/typeterrors/go_proxy:latest 
-          docker tag goprx ghcr.io/typeterrors/go_proxy:${{ steps.create_tag.outputs.tag }} 
+          - name: Log in to GitHub Container Registry
+            run: |
+                echo "${{ secrets.GH_RUNNER }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - name: push
-        id: docker_push
-        run: |
-          echo "docker push ghcr.io/typeterrors/go_proxy:${{ steps.create_tag.outputs.tag }}"
-          docker push ghcr.io/typeterrors/go_proxy:latest
-          docker push ghcr.io/typeterrors/go_proxy:${{ steps.create_tag.outputs.tag }}
+          - name: Build Docker image
+            run: |
+                echo "Building go_proxy image"
+                docker build -t ghcr.io/typeterrors/go_proxy:${{ steps.create_tag.outputs.tag }} \
+                    --build-arg VERSION=${{ steps.create_tag.outputs.tag }} \ 
+                    -f ./go_proxy.dockerfile .
 
-      - name: clean
-        id: docker_rmi 
-        run: |
-          echo "clean up..."
-          docker image rmi goprx
-          docker image rmi ghcr.io/typeterrors/go_proxy:latest
-          docker image rmi ghcr.io/typeterrors/go_proxy:${{ steps.create_tag.outputs.tag }}
-          echo "image ghcr.io/TypeTerrors/go_proxy:${{ steps.create_tag.outputs.tag }} was built and pushed succesfully."
+          - name: Push Docker image
+            run: |
+                echo "Pushing Docker image"
+                docker push ghcr.io/typeterrors/go_proxy:${{ steps.create_tag.outputs.tag }}
+                docker tag ghcr.io/typeterrors/go_proxy:${{ steps.create_tag.outputs.tag }} ghcr.io/typeterrors/go_proxy:latest
+                docker push ghcr.io/typeterrors/go_proxy:latest
 
-      - name: Create Release
-        id: create_release
-        if: steps.docker_build.outcome == 'success'
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_RUNNER }}
-        with:
-          tag_name: ${{ steps.create_tag.outputs.tag }} 
-          release_name: ${{ steps.create_tag.outputs.tagname }} 
-          draft: false
-          prerelease: false
+          - name: Clean up Docker images
+            run: |
+                echo "Cleaning up Docker images"
+                docker image prune -af
+
+          - name: Create Release
+            id: create_release
+            if: success()
+            uses: actions/create-release@v1
+            env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            with:
+                tag_name: ${{ steps.create_tag.outputs.tag }}
+                release_name: ${{ steps.create_tag.outputs.tagname }}
+                draft: false
+                prerelease: false
+
+            # Set up Kubectl
+          - name: Set up Kubectl
+            uses: azure/setup-kubectl@v3
+            with:
+                version: 'v1.22.0' # Specify your Kubernetes version
+
+            # Set up Helm
+          - name: Set up Helm
+            uses: azure/setup-helm@v3
+            with:
+                version: 'v3.8.0' # Specify your Helm version
+
+
+          - name: Configure Kube
+            run: |
+              mkdir -p ~/.kube
+              echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
+              kubectl config get-contexts
+
+          - name: Create TLS Secret 
+            env:
+              TLS_CERT: ${{ secrets.TLS_CERT }}
+              TLS_KEY: ${{ secrets.TLS_KEY }}
+            run: |
+              echo "$TLS_CERT" > /tmp/tls.crt
+              echo "$TLS_KEY"  > /tmp/tls.key
+
+              kubectl create namespace ${{ secrets.NAME }} --dry-run=client -o yaml | kubectl apply -f -
+
+              kubectl create secret tls ${{ secrets.NAME }}.io-secret \
+                --cert=/tmp/tls.crt \
+                --key=/tmp/tls.key \
+                --namespace=${{ secrets.NAME }} \
+                --dry-run=client -o yaml | kubectl apply -f -
+
+            # Deploy using Helm
+          - name: Deploy with Helm
+            run: |
+                helm upgrade --install go_proxy ./charts --namespace "${{ secrets.NAME }}" \
+                    --set application.name=${{ secrets.NAME }} \
+                    --set application.host=${{ secrets.NAME }}.io \
+                    --set application.secretName=${{ secrets.NAME }}.io-secret \
+                    --set application.replicas=2 \
+                    --set-string application.JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+                    --set-string application.PRX_KUBE_CONFIG="${{ secrets.PRX_KUBE_CONFIG }}" \
+                    --set-string application.imagePullSecrets="${{ secrets.IMAGE_PULL_SECRET }}" \
+                    --set global.image.repository=ghcr.io/typeterrors/go_proxy \
+                    --set global.image.tag=${{ steps.create_tag.outputs.tag }}

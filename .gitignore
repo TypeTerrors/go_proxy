@@ -2,3 +2,4 @@
 *.crt
 *.key
 data/
+prx-kubeconfig.yaml
