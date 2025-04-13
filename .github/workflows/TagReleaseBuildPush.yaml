@@ -79,7 +79,7 @@ jobs:
           - name: Configure Kube
             run: |
               mkdir -p ~/.kube
-              echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
+              printf "%s" "${{ secrets.KUBECONFIG }}" > ~/.kube/config
               kubectl config get-contexts
 
           - name: Create TLS Secret 
