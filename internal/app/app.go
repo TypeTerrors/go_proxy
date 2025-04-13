@@ -3,6 +3,7 @@ package app
 import (
 	"net/http"
 	"os"
+	"prx/internal/models"
 	"prx/internal/services"
 	"sync"
 	"time"
@@ -15,13 +16,14 @@ type App struct {
 	Log             *log.Logger
 	Api             *http.Server
 	Kube            services.Kube
-	RedirectRecords map[string]string
 	mu              sync.Mutex
 	namespace       string
 	name            string
+	version         string
+	RedirectRecords map[string]string
 }
 
-func NewProxy(namespace, name, secret string, records map[string]string) *App {
+func NewProxy(settings models.NewProxySettings) *App {
 
 	kube, err := services.NewKubeClient()
 	if err != nil {
@@ -29,17 +31,18 @@ func NewProxy(namespace, name, secret string, records map[string]string) *App {
 	}
 
 	app := &App{
-		Jwt: services.NewJwtService(secret),
+		Jwt: services.NewJwtService(settings.Secret),
 		Log: log.NewWithOptions(os.Stderr, log.Options{
 			ReportCaller:    true,
 			ReportTimestamp: true,
 			TimeFormat:      time.Kitchen,
 			Prefix:          "go_proxy",
 		}),
-		RedirectRecords: records,
+		RedirectRecords: settings.Records,
 		Kube:            kube,
-		namespace:       namespace,
-		name:            name,
+		namespace:       settings.Namespace,
+		name:            settings.Name,
+		version:         settings.Version,
 	}
 
 	app.Api = &http.Server{
@@ -51,6 +54,13 @@ func NewProxy(namespace, name, secret string, records map[string]string) *App {
 }
 
 func (a *App) Start() {
+
+	jwt, err := a.Jwt.GenerateJWT()
+	if err != nil {
+		a.Log.Fatal("Server failed generate json web token on startup:", "error", err)
+	}
+
+	a.printSettings(jwt, os.Getenv("JWT_SECRET"))
 
 	a.Log.Info("Server started on port 80")
 	if err := a.Api.ListenAndServe(); err != nil {

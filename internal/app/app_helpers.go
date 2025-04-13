@@ -79,6 +79,15 @@ func (a *App) Response(w http.ResponseWriter, data interface{}, statusCode int) 
 	}
 }
 
+func (a *App) printSettings(token, secret string) {
+	a.Log.Info("=====================================")
+	a.Log.Info("Project    ", "name   ", a.name)
+	a.Log.Info("Version    ", "version", a.version)
+	a.Log.Info("JWT Secret ", "secret ", secret)
+	a.Log.Info("JWT Token  ", "token  ", token)
+	a.Log.Info("=====================================")
+}
+
 func (a *App) readRedirectRecord(host string) (string, bool) {
 	a.mu.Lock()
 	targetURL, ok := a.RedirectRecords[host]
@@ -99,7 +108,7 @@ func (a *App) deleteRedirectRecordsInMemory(host string) {
 }
 
 func (a *App) deleteRedirectRecordsInCluster(host string) {
-	a.Kube.DeleteProxy(a.namespace, host+"-ingress", host+"-tls")
+	a.Kube.DeleteProxy(a.namespace, host)
 }
 
 func (a *App) setRedirectRecords(from, to string) {
@@ -113,11 +122,12 @@ func (a *App) setRedirectRecordsInMemory(from, to string) {
 	a.mu.Unlock()
 }
 
-func (a *App) setRedirectRecordsInCluster(from, to string) {
-	a.Kube.AddProxyMapping(a.namespace, a.name, services.ProxyMapping{
+func (a *App) setRedirectRecordsInCluster(from, to string) error {
+	err := a.Kube.AddProxyMapping(a.namespace, a.name, services.ProxyMapping{
 		From: from,
 		To:   to,
 	})
+	return err
 }
 
 // Use this simply to avoid typing out extra syntax for fmt.Errorf(). Because its shorter thats why...

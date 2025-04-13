@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"prx/internal/logger"
 	"prx/internal/models"
 	"prx/internal/utils"
 	"time"
@@ -18,7 +17,7 @@ func (a *App) HandleRequests(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusNotFound)
 	}
 
-	logger.Log.Debug("Proxying request", "host", req.Host, "target", targetURL)
+	a.Log.Debug("Proxying request", "host", req.Host, "target", targetURL)
 
 	parsedURL, err := url.Parse(targetURL)
 	if err != nil {
@@ -56,7 +55,7 @@ func (a *App) HandleAddNewProxy(w http.ResponseWriter, req *http.Request) {
 
 func (a *App) HandleDeleteProxy(w http.ResponseWriter, req *http.Request) {
 
-	var body models.AddNewProxy
+	var body models.DelOldProxy
 	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
 		a.Response(w, err, http.StatusInternalServerError)
 		return
@@ -67,13 +66,44 @@ func (a *App) HandleDeleteProxy(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err := a.Kube.DeleteProxy(a.namespace, body.From+"-ingress", body.From+"-tls")
+	err := a.Kube.DeleteProxy(a.namespace, body.From)
 	if err != nil {
 		a.Response(w, a.Err("configuration error %s", err), http.StatusInternalServerError)
 		return
 	}
 
 	a.deleteRedirectRecords(body.From)
+
+	a.Response(w, nil, http.StatusCreated)
+}
+
+func (a *App) HandlePatchProxy(w http.ResponseWriter, req *http.Request) {
+	var body models.PatchOldProxy
+	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+		a.Response(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	if errMsg := utils.ValidateFields(body); errMsg != "" {
+		a.Response(w, a.Err("validation error: %s", errMsg), http.StatusBadRequest)
+		return
+	}
+
+	err := a.Kube.DeleteProxy(a.namespace, body.From)
+	if err != nil {
+		a.Response(w, a.Err("configuration error %s", err), http.StatusInternalServerError)
+		return
+	}
+
+	a.deleteRedirectRecords(body.From)
+
+	err = a.Kube.AddNewProxy(body, a.namespace, a.name)
+	if err != nil {
+		a.Response(w, a.Err("configuration error: %s", err), http.StatusInternalServerError)
+		return
+	}
+
+	a.setRedirectRecords(body.From, body.To)
 
 	a.Response(w, nil, http.StatusCreated)
 }
@@ -103,8 +133,9 @@ func (a *App) HandleGetRedirectionRecords(w http.ResponseWriter, req *http.Reque
 
 func (a *App) StatusHandler(w http.ResponseWriter, req *http.Request) {
 	response := models.Health{
-		Status: "OK",
-		Time:   time.Now().Format(time.RFC3339),
+		Status:  "OK",
+		Time:    time.Now().Format(time.RFC3339),
+		Version: a.version,
 	}
 
 	a.Response(w, response, http.StatusOK)

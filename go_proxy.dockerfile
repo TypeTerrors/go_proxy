@@ -1,9 +1,9 @@
-FROM golang:1.22.1-alpine AS stage1
+FROM golang:1.24-alpine AS stage1
 WORKDIR /app
 COPY . .
 RUN go mod tidy
 WORKDIR /app/cmd/server
-RUN go build -o /app/main .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags="-X main.Version=${VERSION}" -o main /app/main . 
 
 FROM alpine:latest
 WORKDIR /app

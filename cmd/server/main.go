@@ -3,10 +3,20 @@ package main
 import (
 	"os"
 	"prx/internal/app"
+	"prx/internal/models"
 )
+
+var Version = "N/A"
 
 func main() {
 
-	prx := app.NewProxy(os.Getenv("NAMESPACE"), os.Getenv("NAMESPACE"), os.Getenv("JWT_SECRET"), make(map[string]string))
+	prx := app.NewProxy(models.NewProxySettings{
+		Name:      os.Getenv("NAMESPACE"),
+		Namespace: os.Getenv("NAMESPACE"),
+		Secret:    os.Getenv("JWT_SECRET"),
+		Records:   make(map[string]string),
+		Version:   Version,
+	})
+
 	prx.Start()
 }

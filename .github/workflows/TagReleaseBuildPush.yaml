@@ -35,7 +35,9 @@ jobs:
           - name: Build Docker image
             run: |
                 echo "Building go_proxy image"
-                docker build -t ghcr.io/typeterrors/go_proxy:${{ steps.create_tag.outputs.tag }} -f ./go_proxy.dockerfile .
+                docker build -t ghcr.io/typeterrors/go_proxy:${{ steps.create_tag.outputs.tag }} \
+                    --build-arg VERSION=${{ steps.create_tag.outputs.tag }} \ 
+                    -f ./go_proxy.dockerfile .
 
           - name: Push Docker image
             run: |
