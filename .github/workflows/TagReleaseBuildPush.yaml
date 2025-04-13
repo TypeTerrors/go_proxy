@@ -90,19 +90,19 @@ jobs:
               echo "$TLS_CERT" > /tmp/tls.crt
               echo "$TLS_KEY"  > /tmp/tls.key
 
-              kubectl create namespace aproxynate --dry-run=client -o yaml | kubectl apply -f -
+              kubectl create namespace ${{ secrets.NAME }} --dry-run=client -o yaml | kubectl apply -f -
 
-              kubectl create secret tls aproxynate.io-secret \
+              kubectl create secret tls ${{ secrets.NAME }}.io-secret \
                 --cert=/tmp/tls.crt \
                 --key=/tmp/tls.key \
-                --namespace=aproxynate \
+                --namespace=${{ secrets.NAME }} \
                 --dry-run=client -o yaml | kubectl apply -f -
 
             # Deploy using Helm
           - name: Deploy with Helm
             run: |
-                helm upgrade --install go_proxy ./charts --namespace "aproxynate" \
+                helm upgrade --install go_proxy ./charts --namespace "${{ secrets.NAME }}" \
                     --set global.image.tag=${{ steps.create_tag.outputs.tag }} \
                     --set application.JWT_SECRET=${{ secrets.JWT_SECRET }} \
                     --set application.PRX_KUBE_CONFIG=${{ secrets.PRX_KUBE_CONFIG }} \
-                    --set application.name="aproxynate"
+                    --set application.name="${{ secrets.NAME }}"
