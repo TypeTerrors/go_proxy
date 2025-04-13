@@ -34,22 +34,22 @@ jobs:
 
           - name: Build Docker image
             run: |
-                echo "Building go_proxy image"
-                docker build -t ghcr.io/typeterrors/go_proxy:${{ steps.create_tag.outputs.tag }} \
-                    --build-arg VERSION=${{ steps.create_tag.outputs.tag }} \ 
-                    -f ./go_proxy.dockerfile .
+              echo "Building go_proxy image"
+              docker build -t ghcr.io/typeterrors/go_proxy:${{ steps.create_tag.outputs.tag }} \
+                  --build-arg VERSION=${{ steps.create_tag.outputs.tag }} \
+                  -f ./go_proxy.dockerfile .
 
           - name: Push Docker image
             run: |
-                echo "Pushing Docker image"
-                docker push ghcr.io/typeterrors/go_proxy:${{ steps.create_tag.outputs.tag }}
-                docker tag ghcr.io/typeterrors/go_proxy:${{ steps.create_tag.outputs.tag }} ghcr.io/typeterrors/go_proxy:latest
-                docker push ghcr.io/typeterrors/go_proxy:latest
+              echo "Pushing Docker image"
+              docker push ghcr.io/typeterrors/go_proxy:${{ steps.create_tag.outputs.tag }}
+              docker tag ghcr.io/typeterrors/go_proxy:${{ steps.create_tag.outputs.tag }} ghcr.io/typeterrors/go_proxy:latest
+              docker push ghcr.io/typeterrors/go_proxy:latest
 
           - name: Clean up Docker images
             run: |
-                echo "Cleaning up Docker images"
-                docker image prune -af
+              echo "Cleaning up Docker images"
+              docker image prune -af
 
           - name: Create Release
             id: create_release
@@ -101,13 +101,13 @@ jobs:
             # Deploy using Helm
           - name: Deploy with Helm
             run: |
-                helm upgrade --install go_proxy ./charts --namespace "${{ secrets.NAME }}" \
-                    --set application.name=${{ secrets.NAME }} \
-                    --set application.host=${{ secrets.NAME }}.io \
-                    --set application.secretName=${{ secrets.NAME }}.io-secret \
-                    --set application.replicas=2 \
-                    --set-string application.JWT_SECRET="${{ secrets.JWT_SECRET }}" \
-                    --set-string application.PRX_KUBE_CONFIG="${{ secrets.PRX_KUBE_CONFIG }}" \
-                    --set-string application.imagePullSecrets="${{ secrets.IMAGE_PULL_SECRET }}" \
-                    --set global.image.repository=ghcr.io/typeterrors/go_proxy \
-                    --set global.image.tag=${{ steps.create_tag.outputs.tag }}
+              helm upgrade --install go_proxy ./charts --namespace "${{ secrets.NAME }}" \
+                  --set application.name=${{ secrets.NAME }} \
+                  --set application.host=${{ secrets.NAME }}.io \
+                  --set application.secretName=${{ secrets.NAME }}.io-secret \
+                  --set application.replicas=2 \
+                  --set-string application.JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+                  --set-string application.PRX_KUBE_CONFIG="${{ secrets.PRX_KUBE_CONFIG }}" \
+                  --set-string application.imagePullSecrets="${{ secrets.IMAGE_PULL_SECRET }}" \
+                  --set global.image.repository=ghcr.io/typeterrors/go_proxy \
+                  --set global.image.tag=${{ steps.create_tag.outputs.tag }}
