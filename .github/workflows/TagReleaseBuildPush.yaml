@@ -101,7 +101,7 @@ jobs:
             # Deploy using Helm
           - name: Deploy with Helm
             run: |
-              helm upgrade --install go_proxy ./charts --namespace "${{ secrets.NAME }}" \
+              helm upgrade --install go-proxy ./charts --namespace "${{ secrets.NAME }}" \
                   --set application.name=${{ secrets.NAME }} \
                   --set application.host=${{ secrets.NAME }}.io \
                   --set application.secretName=${{ secrets.NAME }}.io-secret \
