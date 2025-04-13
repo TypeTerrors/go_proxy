@@ -82,6 +82,22 @@ jobs:
               echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
               kubectl config get-contexts
 
+          - name: Create TLS Secret 
+            env:
+              TLS_CERT: ${{ secrets.TLS_CERT }}
+              TLS_KEY: ${{ secrets.TLS_KEY }}
+            run: |
+              echo "$TLS_CERT" > /tmp/tls.crt
+              echo "$TLS_KEY"  > /tmp/tls.key
+
+              kubectl create namespace aproxynate --dry-run=client -o yaml | kubectl apply -f -
+
+              kubectl create secret tls aproxynate.io-secret \
+                --cert=/tmp/tls.crt \
+                --key=/tmp/tls.key \
+                --namespace=aproxynate \
+                --dry-run=client -o yaml | kubectl apply -f -
+
             # Deploy using Helm
           - name: Deploy with Helm
             run: |
