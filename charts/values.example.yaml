@@ -1,14 +1,15 @@
 global:
-  image:
-    repository: ghcr.io/<example-user>/<example-image>
-    tag: "latest"  # This will be overridden by the Helm command
+   image:
+      repository: ghcr.io/typeterrors/go_proxy
+      tag: latest  # This will be overridden by the Helm command
 
 application:
-    name: example-name
-    host: example.com
-    secretName: example.io-secret
-    replicas: 1
-    args:
-        - '--record'
-        - 'FROM=TO'
-
+   name: application name
+   host: application's FQDN
+   secretName: application's FQDN secret name
+   replicas: 2
+   JWT_SECRET: "your-secret-value"
+   PRX_KUBE_CONFIG: "<new users kube config for application>" # edit the shell secript cluster-service-account.yaml to create the service account with the proper permissions
+   image:
+      repository: ghcr.io/typeterrors/go_proxy
+      # tag: "specific-tag"  # Optional per-application override
