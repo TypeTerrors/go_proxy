@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/log"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -234,23 +235,50 @@ func (k Kube) GetProxyMappings(namespace, configMapName string) (map[string]stri
 }
 
 func (k Kube) AddProxyMapping(namespace, configMapName string, newMapping ProxyMapping) error {
+	var mappings []ProxyMapping
+
+	// Attempt to get the ConfigMap.
 	cm, err := k.client.CoreV1().ConfigMaps(namespace).Get(context.Background(), configMapName, metav1.GetOptions{})
 	if err != nil {
+		// Check if the error indicates that the configmap does not exist.
+		if apierrors.IsNotFound(err) {
+			// ConfigMap doesn't exist, so create a new one containing the new mapping.
+			mappings = []ProxyMapping{newMapping}
+			updatedData, err := yaml.Marshal(mappings)
+			if err != nil {
+				return fmt.Errorf("failed to marshal new proxy mapping: %v", err)
+			}
+			newCM := &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      configMapName,
+					Namespace: namespace,
+					Labels: map[string]string{
+						"managed-by": "prx",
+					},
+				},
+				Data: map[string]string{
+					"proxies.yaml": string(updatedData),
+				},
+			}
+			_, err = k.client.CoreV1().ConfigMaps(namespace).Create(context.Background(), newCM, metav1.CreateOptions{})
+			if err != nil {
+				return fmt.Errorf("failed to create configmap: %v", err)
+			}
+			k.log.Info("Created new configmap", "name", configMapName)
+			return nil
+		}
 		return fmt.Errorf("failed to get configmap: %v", err)
 	}
 
+	// If the ConfigMap exists, try to load the existing mappings.
 	data, ok := cm.Data["proxies.yaml"]
-	if !ok {
-		data = ""
-	}
-
-	var mappings []ProxyMapping
-	if data != "" {
+	if ok && data != "" {
 		if err := yaml.Unmarshal([]byte(data), &mappings); err != nil {
 			return fmt.Errorf("failed to unmarshal proxy mappings: %v", err)
 		}
 	}
 
+	// Append the new mapping.
 	mappings = append(mappings, newMapping)
 
 	updatedData, err := yaml.Marshal(mappings)
@@ -265,7 +293,6 @@ func (k Kube) AddProxyMapping(namespace, configMapName string, newMapping ProxyM
 	}
 
 	k.log.Info("Added record to configmap "+configMapName, "from", newMapping.From, "to", newMapping.To)
-
 	return nil
 }
 
