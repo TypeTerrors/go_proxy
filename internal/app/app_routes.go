@@ -1,14 +1,11 @@
 package app
 
-import (
-	"net/http"
-)
+import "net/http"
 
 func (a *App) CreateRoutes() http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/", a.proxyRoutes())
 	mux.Handle("/api/", a.apiRoutes())
-	mux.Handle("/admin/", a.templateRoutes())
 	return a.LoggingMiddleware(mux)
 }
 
@@ -27,13 +24,7 @@ func (a *App) apiRoutes() http.Handler {
 	mux.HandleFunc("GET /api/status", a.StatusHandler)
 	mux.HandleFunc("GET /api/prx", a.HandleGetRedirectionRecords)
 	mux.HandleFunc("POST /api/prx", a.HandleAddNewProxy)
-	mux.HandleFunc("PATCH /api/prx", a.HandlePatchProxy)
+    mux.HandleFunc("PATCH /api/prx", a.HandlePatchProxy)
 	mux.HandleFunc("DELETE /api/prx", a.HandleDeleteProxy)
-	return a.AuthenticationMiddleware(mux)
-}
-
-func (a *App) templateRoutes() http.Handler {
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /admin/dashboard", a.HandleDashboard)
 	return a.AuthenticationMiddleware(mux)
 }
