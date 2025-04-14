@@ -36,9 +36,6 @@ WORKDIR /root/
 # Copy the binary from the builder stage.
 COPY --from=builder /app/main .
 
-# Copy the templates folder from the builder stage.
-COPY --from=builder /app/templates ./templates
-
 # Expose the port (as defined in your code, e.g. 3000).
 EXPOSE 80
 

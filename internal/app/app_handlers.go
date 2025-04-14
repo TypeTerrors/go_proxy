@@ -2,7 +2,6 @@ package app
 
 import (
 	"encoding/json"
-	"html/template"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -130,40 +129,6 @@ func (a *App) HandleGetRedirectionRecords(w http.ResponseWriter, req *http.Reque
 	}
 
 	a.Response(w, res, http.StatusOK)
-}
-func (a *App) HandleDashboard(w http.ResponseWriter, r *http.Request) {
-	tmpl, err := template.ParseFiles("./templates/page.html")
-	if err != nil {
-		a.Response(w, a.Err("error loading template"), http.StatusInternalServerError)
-		return
-	}
-
-	proxyList, err := a.getAllRedirectionRecords()
-	if err != nil {
-		a.Response(w, a.Err("error getting list of existing proxies"), http.StatusInternalServerError)
-		return
-	}
-
-	// Simulate retrieval of proxy routes. Replace this with your actual data retrieval logic as needed.
-	proxies := []models.RedirectionRecords{}
-	for i, v := range proxyList {
-		proxies = append(proxies, models.RedirectionRecords{
-			From: i,
-			To:   v,
-		})
-	}
-
-	data := struct {
-		Title   string
-		Proxies []models.RedirectionRecords
-	}{
-		Title:   "go_proxy",
-		Proxies: proxies,
-	}
-
-	if err := tmpl.Execute(w, data); err != nil {
-		a.Response(w, a.Err("error rendering template"), http.StatusInternalServerError)
-	}
 }
 
 func (a *App) StatusHandler(w http.ResponseWriter, req *http.Request) {
