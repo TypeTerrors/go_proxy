@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"prx/internal/models"
+	"strings"
 
 	"encoding/base64"
 
@@ -28,7 +29,6 @@ type ProxyMapping struct {
 }
 
 func NewKubeClient() (Kube, error) {
-
 	kubeconfigDataEnc := os.Getenv("PRX_KUBE_CONFIG")
 
 	var config *rest.Config
@@ -40,9 +40,11 @@ func NewKubeClient() (Kube, error) {
 			return Kube{}, fmt.Errorf("failed to decode base64 PRX_KUBE_CONFIG: %v", err)
 		}
 
-		config, err = clientcmd.RESTConfigFromKubeConfig([]byte(decodedKubeconfig))
+		// Trim leading/trailing quotes if present.
+		kubeconfigStr := strings.Trim(string(decodedKubeconfig), "\"")
+		config, err = clientcmd.RESTConfigFromKubeConfig([]byte(kubeconfigStr))
 		if err != nil {
-			return Kube{}, fmt.Errorf("failed to decode base64 kubeconfig: %v", err)
+			return Kube{}, fmt.Errorf("failed to parse kubeconfig: %v", err)
 		}
 	} else {
 		kubeconfigPath := filepath.Join(os.Getenv("HOME"), ".kube", "config")
