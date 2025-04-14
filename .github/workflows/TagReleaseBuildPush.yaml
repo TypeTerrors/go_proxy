@@ -98,13 +98,13 @@ jobs:
               rules:
               - apiGroups: [""]
                 resources: ["secrets"]
-                verbs: ["create", "update", "patch", "delete"]
+                verbs: ["create", "get", "list", "update", "patch", "delete"]
               - apiGroups: ["networking.k8s.io"]
                 resources: ["ingresses"]
-                verbs: ["create", "update", "patch", "delete"]
+                verbs: ["create", "get", "list", "update", "patch", "delete"]
               - apiGroups: [""]
                 resources: ["configmaps"]
-                verbs: ["create", "update", "patch", "delete"]
+                verbs: ["get", "list", "create", "update", "patch", "delete"]
               EOF
 
           - name: Create RoleBinding for ServiceAccount
