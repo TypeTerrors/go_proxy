@@ -115,7 +115,7 @@ func (a *App) HandleGetRedirectionRecords(w http.ResponseWriter, req *http.Reque
 		a.Response(w, err, http.StatusInternalServerError)
 	}
 
-	if len(records) > 1 {
+	if len(records) < 1 {
 		a.Response(w, a.Err("no redirection records available"), http.StatusNoContent)
 	}
 

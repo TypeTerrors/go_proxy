@@ -2,13 +2,14 @@ package services
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
 	"prx/internal/models"
 	"strings"
 
-	"encoding/base64"
+	"github.com/charmbracelet/log"
 
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -21,6 +22,7 @@ import (
 
 type Kube struct {
 	client *kubernetes.Clientset
+	log    *log.Logger
 }
 
 type ProxyMapping struct {
@@ -28,7 +30,7 @@ type ProxyMapping struct {
 	To   string `yaml:"to"`
 }
 
-func NewKubeClient() (Kube, error) {
+func NewKubeClient(log *log.Logger) (Kube, error) {
 	kubeconfigDataEnc := os.Getenv("PRX_KUBE_CONFIG")
 
 	var config *rest.Config
@@ -59,7 +61,10 @@ func NewKubeClient() (Kube, error) {
 		return Kube{}, fmt.Errorf("failed to create Kubernetes client: %v", err)
 	}
 
-	return Kube{client: clientset}, nil
+	return Kube{
+		client: clientset,
+		log:    log,
+	}, nil
 }
 
 // AddNewProxy
@@ -105,6 +110,8 @@ func (k Kube) AddNewProxy(anyBody any, namespace, name string) error {
 	if err != nil {
 		return err
 	}
+
+	k.log.Info("Created secret", "name", secretName, "from", body.From, "to", body.To)
 
 	ingressName := body.From + "-ingress"
 	ingress := &networkingv1.Ingress{
@@ -155,6 +162,9 @@ func (k Kube) AddNewProxy(anyBody any, namespace, name string) error {
 	if err != nil {
 		return err
 	}
+
+	k.log.Info("Created ingress", "name", ingressName)
+
 	return nil
 }
 
@@ -182,13 +192,18 @@ func (k Kube) DeleteProxy(namespace, name string) error {
 	}
 
 	if err := k.client.CoreV1().Secrets(namespace).Delete(context.Background(), secret, metav1.DeleteOptions{}); err != nil {
-		return fmt.Errorf("failed to get ingress: %v", err)
+		return fmt.Errorf("failed to get secret: %v", err)
 	}
+
+	k.log.Info("Deleted", "secret", secret)
 
 	// Delete the ingress resource
 	if err := k.client.NetworkingV1().Ingresses(namespace).Delete(context.Background(), ingressName, metav1.DeleteOptions{}); err != nil {
 		return fmt.Errorf("failed to delete ingress: %v", err)
 	}
+
+	k.log.Info("Deleted", "ingress", ingressName)
+
 	return nil
 }
 
@@ -249,6 +264,8 @@ func (k Kube) AddProxyMapping(namespace, configMapName string, newMapping ProxyM
 		return fmt.Errorf("failed to update configmap: %v", err)
 	}
 
+	k.log.Info("Added record to configmap "+configMapName, "from", newMapping.From, "to", newMapping.To)
+
 	return nil
 }
 
@@ -301,6 +318,8 @@ func (k Kube) DeleteProxyMapping(namespace, configMapName, from string) error {
 	if err != nil {
 		return fmt.Errorf("failed to update configmap: %v", err)
 	}
+
+	k.log.Info("Deleted record in configmap "+configMapName, "record", from)
 
 	return nil
 }
