@@ -120,6 +120,6 @@ jobs:
                   --set application.replicas=2 \
                   --set-string application.imagePullSecrets="${{ secrets.IMAGE_PULL_SECRET }}" \
                   --set-string application.JWT_SECRET="${{ secrets.JWT_SECRET }}" \
-                  --set-string application.PRX_KUBE_CONFIG=$(echo -n "${{ secrets.IMAGE_PULL_SECRET }}" | base64)
+                  --set-string application.PRX_KUBE_CONFIG=$(echo -n "${{ secrets.IMAGE_PULL_SECRET }}" | base64) \
                   --set global.image.repository=ghcr.io/typeterrors/go_proxy \
                   --set global.image.tag=${{ steps.create_tag.outputs.tag }}
