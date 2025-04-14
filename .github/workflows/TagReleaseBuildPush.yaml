@@ -141,8 +141,8 @@ jobs:
             run: |
               echo "Retrieving cluster server URL and CA data..."
 
-              CLUSTER_SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
-              CA_DATA=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.certificate-authority-data}')
+              CLUSTER_SERVER=$(kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.server}')
+              CA_DATA=$(kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}')
 
               echo "CLUSTER_SERVER=${CLUSTER_SERVER}" >> $GITHUB_OUTPUT
               echo "CLUSTER_SERVER"
