@@ -75,12 +75,116 @@ jobs:
             with:
                 version: 'v3.8.0' # Specify your Helm version
 
-
           - name: Configure Kube
             run: |
               mkdir -p ~/.kube
               printf "%s" "${{ secrets.KUBECONFIG }}" > ~/.kube/config
               kubectl config get-contexts
+
+          - name: Create ServiceAccount in namespace
+            run: |
+              echo "Creating ServiceAccount prx-user in namespace..."
+              kubectl create serviceaccount prx-user -n ${{ secrets.NAME }} --dry-run=client -o yaml | kubectl apply -f -
+
+          - name: Create Role for ServiceAccount
+            run: |
+              echo "Creating Role prx-user-role in namespace ..."
+
+              cat <<EOF | kubectl apply -f -
+              apiVersion: rbac.authorization.k8s.io/v1
+              kind: Role
+              metadata:
+                name: prx-user-role
+                namespace: ${{ secrets.NAME }}
+              rules:
+              - apiGroups: [""]
+                resources: ["secrets"]
+                verbs: ["create"]
+              - apiGroups: ["networking.k8s.io"]
+                resources: ["ingresses"]
+                verbs: ["create"]
+              EOF
+
+          - name: Create RoleBinding for ServiceAccount
+            run: |
+              echo "Creating RoleBinding prx-user-rolebinding in namespace..."
+
+              cat <<EOF | kubectl apply -f -
+              apiVersion: rbac.authorization.k8s.io/v1
+              kind: RoleBinding
+              metadata:
+                name: prx-user-rolebinding
+                namespace: ${{ secrets.NAME }}
+              subjects:
+              - kind: ServiceAccount
+                name: prx-user
+                namespace: ${{ secrets.NAME }}
+              roleRef:
+                kind: Role
+                name: prx-user-role
+                apiGroup: rbac.authorization.k8s.io
+              EOF
+
+          - name: Create token for ServiceAccount
+            id: create_token
+            run: |
+              echo "Creating token for ServiceAccount prx-user..."
+              TOKEN=$(kubectl create token prx-user -n ${{ secrets.NAME }})
+              if [ -z "$TOKEN" ]; then
+                echo "Failed to create token for prx-user" >&2
+                exit 1
+              fi
+              echo "TOKEN=${TOKEN}" >> $GITHUB_OUTPUT
+
+          - name: Get cluster info
+            id: get_cluster_info
+            run: |
+              echo "Retrieving cluster server URL and CA data..."
+
+              CLUSTER_SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
+              CA_DATA=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.certificate-authority-data}')
+
+              echo "CLUSTER_SERVER=${CLUSTER_SERVER}" >> $GITHUB_OUTPUT
+              echo "CA_DATA=${CA_DATA}" >> $GITHUB_OUTPUT
+
+          - name: Generate kubeconfig file
+            id: generate_kubeconfig
+            run: |
+              echo "Generating kubeconfig file prx-kubeconfig.yaml..."
+
+              TOKEN=${{ steps.create_token.outputs.TOKEN }}
+              CLUSTER_SERVER=${{ steps.get_cluster_info.outputs.CLUSTER_SERVER }}
+              CA_DATA=${{ steps.get_cluster_info.outputs.CA_DATA }}
+
+              cat <<EOF > prx-kubeconfig.yaml
+              apiVersion: v1
+              kind: Config
+              clusters:
+              - name: my-cluster
+                cluster:
+                  server: ${CLUSTER_SERVER}
+                  certificate-authority-data: ${CA_DATA}
+              users:
+              - name: prx-user
+                user:
+                  token: ${TOKEN}
+              contexts:
+              - name: prx-context
+                context:
+                  cluster: my-cluster
+                  user: prx-user
+                  namespace: ${{ secrets.NAME }}
+              current-context: prx-context
+              EOF
+
+          - name: Base64 encode kubeconfig file
+            id: encode_kubeconfig
+            run: |
+              echo "Encoding kubeconfig file to base64..."
+
+              # Use -w 0 to wrap on a single line (Linux). 
+              BASE64_KUBECONFIG=$(base64 -w 0 prx-kubeconfig.yaml)
+              echo "kubeconfig_b64=${BASE64_KUBECONFIG}" >> $GITHUB_OUTPUT
 
           - name: Create Image Pull Secret
             run: |
@@ -120,6 +224,6 @@ jobs:
                   --set application.replicas=2 \
                   --set-string application.imagePullSecrets="${{ secrets.IMAGE_PULL_SECRET }}" \
                   --set-string application.JWT_SECRET="${{ secrets.JWT_SECRET }}" \
-                  --set-string application.PRX_KUBE_CONFIG=$(echo -n "${{ secrets.IMAGE_PULL_SECRET }}" | base64) \
+                  --set-string application.PRX_KUBE_CONFIG="${{ steps.encode_kubeconfig.outputs.kubeconfig_b64 }}" \
                   --set global.image.repository=ghcr.io/typeterrors/go_proxy \
                   --set global.image.tag=${{ steps.create_tag.outputs.tag }}
