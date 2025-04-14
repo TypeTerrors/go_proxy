@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Values.application.name }}"
+spec:
+  replicas: {{ .Values.application.replicas }}
+  selector:
+    matchLabels:
+      app: "{{ .Values.application.name }}"
+  template:
+    metadata:
+      labels:
+        app: "{{ .Values.application.name }}"
+    spec:
+      imagePullSecrets:
+        - name: "{{ .Values.application.imagePullSecrets }}"
+      containers:
+        - name: "{{ .Values.application.name }}"
+          image: "{{ .Values.application.image.repository }}:{{ default $.Values.global.image.tag .Values.application.image.tag }}"
+          command: ["./main"]
+          env:
+            - name: JWT_SECRET
+              value: "{{ .Values.application.JWT_SECRET }}"
+            - name: NAMESPACE
+              value: "{{ .Values.application.name }}"
+            - name: PRX_KUBE_CONFIG
+              value: "{{ .Values.application.PRX_KUBE_CONFIG }}"
+          ports:
+            - containerPort: 80
+          {{- if .Values.application.resources }}
+          resources:
+            {{- toYaml .Values.application.resources | nindent 12 }}
+          {{- end }}

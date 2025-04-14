@@ -1,0 +1,5 @@
+.env
+*.crt
+*.key
+data/
+prx-kubeconfig.yaml

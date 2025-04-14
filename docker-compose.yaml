@@ -1,0 +1,10 @@
+version: "3.8"
+services:
+
+  goprx:
+    build:
+      dockerfile: ./dockerfile.yaml
+      context: .
+    ports:
+      - "80:80"
+    restart: unless-stopped
