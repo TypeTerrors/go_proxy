@@ -7,8 +7,18 @@ import (
 
 func (a *App) LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		a.Log.Info("new request:", "method", r.Method, "path", r.URL.Path, "host", r.Host)
-		a.Log.Info(r.Header.Get("X-Forwarded-Host"))
+
+		host := r.Host
+		if host == "" {
+			forwardedHost := r.Header.Get("X-Fowarded-Host")
+			if forwardedHost != "" {
+				host = forwardedHost
+			} else {
+				a.Response(w, a.Err("host not found"), http.StatusUnprocessableEntity)
+			}
+		}
+
+		a.Log.Info("new request:", "method", r.Method, "path", r.URL.Path, "host", host)
 		next.ServeHTTP(w, r)
 	})
 }

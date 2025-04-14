@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>{{.Title}}</title>
+
+    <!-- Bulma CSS Framework -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css" />
+
+    <!-- Custom Dark Style -->
+    <!-- Custom Dark Mode Style using Bulma's default dark colors -->
+    <style>
+        /* Base page styles using Bulma's dark palette */
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            background-color: #363636;
+            /* Bulma dark grey */
+            font-family: "Helvetica", "Arial", sans-serif;
+            color: #f5f5f5;
+        }
+
+        .container {
+            margin-top: 20px;
+        }
+
+        .columns .column {
+            flex: 1;
+        }
+
+        /* Right container for proxy routes using Bulma's default "box" styling */
+        .proxy-container {
+            background-color: #363636;
+            padding: 1.5rem;
+            border-radius: 5px;
+            border: 1px solid #4a4a4a;
+            transition: all 0.3s ease;
+        }
+
+        /* Left container for forms */
+        .box {
+            background-color: #2b2b2b;
+            transition: all 0.3s ease;
+            box-shadow: none;
+            border: 1px solid #4a4a4a;
+        }
+
+        /* Let Bulma's default button styles apply; use Bulma classes (is-link, is-success, is-danger) */
+        .blue-buttons {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        /* Remove custom input overrides so Bulma defaults take precedence */
+        .green-input input, .red-input input {
+            /* No overrides: use Bulma input styling */
+        }
+
+        /* Smooth transitions for showing/hiding forms */
+        .hidden {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .visible {
+            display: block;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+
+        /* Styling for proxy route messages */
+        .proxy-message {
+            background-color: #2b2b2b;
+            border: 1px solid #4a4a4a;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            color: #f5f5f5;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        .proxy-message:hover {
+            background-color: #323232;
+            border-color: #5a5a5a;
+        }
+
+        /* Ensure headings and labels have proper contrast */
+        h1.title,
+        h2.subtitle,
+        .label {
+            color: #f5f5f5;
+        }
+    </style>
+</head>
+
+<body>
+    <section class="section">
+        <div class="container">
+            <h1 class="title">{{.Title}}</h1>
+
+            <div class="columns">
+
+                <!-- Left Column: Tabs & Tab Content -->
+                <div class="column is-half">
+                    <!-- Bulma Tabs -->
+                    <div class="tabs is-boxed">
+                        <ul>
+                            <li id="tab-add" class="is-active">
+                                <a>
+                                    <span>Add New Proxy</span>
+                                </a>
+                            </li>
+                            <li id="tab-delete">
+                                <a>
+                                    <span>Delete Proxy</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Tab Content: Add New Proxy Form -->
+                    <div id="form-add" class="box visible" style="margin-top: 1rem;">
+                        <div class="green-input">
+                            <div class="field">
+                                <label class="label">From</label>
+                                <div class="control">
+                                    <input id="addFrom" class="input" type="text" placeholder="Enter from value" />
+                                </div>
+                            </div>
+                            <div class="field">
+                                <label class="label">To</label>
+                                <div class="control">
+                                    <input id="addTo" class="input" type="text" placeholder="Enter to value" />
+                                </div>
+                            </div>
+                            <div class="field">
+                                <label class="label">CRT (base64)</label>
+                                <div class="control">
+                                    <input id="addCRT" class="input" type="text" placeholder="Enter base64 CRT" />
+                                </div>
+                            </div>
+                            <div class="field">
+                                <label class="label">Key (base64)</label>
+                                <div class="control">
+                                    <input id="addKey" class="input" type="text" placeholder="Enter base64 Key" />
+                                </div>
+                            </div>
+                            <div class="field">
+                                <div class="control">
+                                    <button id="submitAdd" class="button is-success">Submit</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab Content: Delete Proxy Form -->
+                    <div id="form-delete" class="box hidden" style="margin-top: 1rem;">
+                        <div class="red-input">
+                            <div class="field">
+                                <label class="label">Confirm Deletion</label>
+                                <div class="control">
+                                    <input id="deleteConfirm" class="input is-danger" type="text"
+                                        placeholder="From value from route name" />
+                                </div>
+                            </div>
+                            <div class="field">
+                                <div class="control">
+                                    <button id="submitDelete" class="button is-danger">Delete</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Existing Proxy Routes -->
+                <div class="column is-half proxy-container">
+                    <h2 class="subtitle">Existing Proxy Routes</h2>
+                    {{if .Proxies}}
+                    {{range .Proxies}}
+                    <div class="proxy-message">
+                        <strong style="color: white;">From:</strong> {{.From}}<br />
+                        <strong style="color: white;">To:</strong> {{.To}}
+                    </div>
+                    {{end}}
+                    {{else}}
+                    <p>No proxies found.</p>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Inline JavaScript for toggling forms and handling submissions -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Tab elements
+            const tabAdd = document.getElementById('tab-add');
+            const tabDelete = document.getElementById('tab-delete');
+
+            // Form containers
+            const formAdd = document.getElementById('form-add');
+            const formDelete = document.getElementById('form-delete');
+
+            // Submit buttons remain the same
+            const submitAdd = document.getElementById('submitAdd');
+            const submitDelete = document.getElementById('submitDelete');
+
+            // Toggle tabs and forms
+            tabAdd.addEventListener('click', function () {
+                tabAdd.classList.add('is-active');
+                tabDelete.classList.remove('is-active');
+                formAdd.classList.remove('hidden');
+                formAdd.classList.add('visible');
+                formDelete.classList.remove('visible');
+                formDelete.classList.add('hidden');
+            });
+
+            tabDelete.addEventListener('click', function () {
+                tabDelete.classList.add('is-active');
+                tabAdd.classList.remove('is-active');
+                formDelete.classList.remove('hidden');
+                formDelete.classList.add('visible');
+                formAdd.classList.remove('visible');
+                formAdd.classList.add('hidden');
+            });
+
+            // Add new proxy submission
+            submitAdd.addEventListener('click', function () {
+                const fromValue = document.getElementById('addFrom').value.trim();
+                const toValue = document.getElementById('addTo').value.trim();
+                const crtValue = document.getElementById('addCRT').value.trim();
+                const keyValue = document.getElementById('addKey').value.trim();
+                if (!fromValue || !toValue || !crtValue || !keyValue) {
+                    alert('Please enter from, to, CRT, and Key values.');
+                    return;
+                }
+                fetch('/api/prx', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ from: fromValue, to: toValue, crt: crtValue, key: keyValue })
+                })
+                    .then(response => {
+                        if (response.ok) {
+                            location.reload();
+                        } else {
+                            alert('Failed to add proxy.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error adding proxy.');
+                    });
+            });
+
+            // Delete proxy submission
+            submitDelete.addEventListener('click', function () {
+                const confirmValue = document.getElementById('deleteConfirm').value.trim();
+                if (!confirmValue) {
+                    alert('Please confirm deletion.');
+                    return;
+                }
+                fetch('/api/prx', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ confirm: confirmValue })
+                })
+                    .then(response => {
+                        if (response.ok) {
+                            location.reload();
+                        } else {
+                            alert('Failed to delete proxy.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error deleting proxy.');
+                    });
+            });
+        });
+    </script>
+</body>
+
+</html>
