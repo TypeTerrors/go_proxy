@@ -65,9 +65,9 @@ jobs:
 
             # Set up Kubectl
           - name: Set up Kubectl
-            uses: azure/setup-kubectl@v3
+            uses: azure/setup-kubectl@v4
             with:
-                version: 'v1.22.0' # Specify your Kubernetes version
+                version: 'v1.28.0' # Specify your Kubernetes version
 
             # Set up Helm
           - name: Set up Helm
