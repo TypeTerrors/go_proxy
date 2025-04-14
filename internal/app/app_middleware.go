@@ -8,6 +8,7 @@ import (
 func (a *App) LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		a.Log.Info("new request:", "method", r.Method, "path", r.URL.Path, "host", r.Host)
+		a.Log.Info(r.Header.Get("X-Forwarded-Host"))
 		next.ServeHTTP(w, r)
 	})
 }
