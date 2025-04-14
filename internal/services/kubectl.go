@@ -75,6 +75,15 @@ func (k Kube) AddNewProxy(anyBody any, namespace, name string) error {
 
 	body := anyBody.(models.AddNewProxy)
 
+	cert, err := base64.StdEncoding.DecodeString(body.Cert)
+	if err != nil {
+		return err
+	}
+	key, err := base64.StdEncoding.DecodeString(body.Key)
+	if err != nil {
+		return err
+	}
+
 	// Create TLS secret with the provided certificate and key.
 	secretName := body.From + "-tls"
 	secret := &corev1.Secret{
@@ -87,12 +96,12 @@ func (k Kube) AddNewProxy(anyBody any, namespace, name string) error {
 		},
 		Type: corev1.SecretTypeTLS,
 		Data: map[string][]byte{
-			"tls.crt": []byte(body.Cert),
-			"tls.key": []byte(body.Key),
+			"tls.crt": []byte(cert),
+			"tls.key": []byte(key),
 		},
 	}
 
-	_, err := k.client.CoreV1().Secrets(namespace).Create(context.Background(), secret, metav1.CreateOptions{})
+	_, err = k.client.CoreV1().Secrets(namespace).Create(context.Background(), secret, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}
