@@ -82,6 +82,18 @@ jobs:
               printf "%s" "${{ secrets.KUBECONFIG }}" > ~/.kube/config
               kubectl config get-contexts
 
+          - name: Create Image Pull Secret
+            run: |
+              kubectl create namespace "${{ secrets.NAME }}" --dry-run=client -o yaml | kubectl apply -f -
+              
+              kubectl create secret docker-registry "${{ secrets.IMAGE_PULL_SECRET }}" \
+                --docker-server=ghcr.io \
+                --docker-username=delduked \
+                --docker-password="${{ secrets.ACCESS_TOKEN }}" \
+                --docker-email="nate@nated.ca" \
+                --namespace="${{ secrets.NAME }}" \
+                --dry-run=client -o yaml | kubectl apply -f -
+
           - name: Create TLS Secret 
             env:
               TLS_CERT: ${{ secrets.TLS_CERT }}
