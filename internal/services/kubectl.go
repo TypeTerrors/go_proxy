@@ -146,7 +146,7 @@ func (k Kube) AddNewProxy(anyBody any, namespace, name string) error {
 										Service: &networkingv1.IngressServiceBackend{
 											Name: name,
 											Port: networkingv1.ServiceBackendPort{
-												Number: 443,
+												Number: 80,
 											},
 										},
 									},
