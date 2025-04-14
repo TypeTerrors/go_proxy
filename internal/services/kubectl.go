@@ -7,14 +7,15 @@ import (
 	"path/filepath"
 	"prx/internal/models"
 
-	"gopkg.in/yaml.v2"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
+	"encoding/base64"
 
+	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 type Kube struct {
@@ -27,14 +28,21 @@ type ProxyMapping struct {
 }
 
 func NewKubeClient() (Kube, error) {
-	kubeconfigData := os.Getenv("PRX_KUBE_CONFIG")
+
+	kubeconfigDataEnc := os.Getenv("PRX_KUBE_CONFIG")
+
 	var config *rest.Config
 	var err error
 
-	if kubeconfigData != "" {
-		config, err = clientcmd.RESTConfigFromKubeConfig([]byte(kubeconfigData))
+	if kubeconfigDataEnc != "" {
+		decodedKubeconfig, err := base64.StdEncoding.DecodeString(kubeconfigDataEnc)
 		if err != nil {
-			return Kube{}, fmt.Errorf("failed to build config from env PRX_KUBE_CONFIG: %v", err)
+			return Kube{}, fmt.Errorf("failed to decode base64 PRX_KUBE_CONFIG: %v", err)
+		}
+
+		config, err = clientcmd.RESTConfigFromKubeConfig([]byte(decodedKubeconfig))
+		if err != nil {
+			return Kube{}, fmt.Errorf("failed to decode base64 kubeconfig: %v", err)
 		}
 	} else {
 		kubeconfigPath := filepath.Join(os.Getenv("HOME"), ".kube", "config")
