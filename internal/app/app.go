@@ -25,24 +25,27 @@ type App struct {
 
 func NewProxy(settings models.NewProxySettings) *App {
 
-	kube, err := services.NewKubeClient()
-	if err != nil {
-		panic(err)
-	}
+	var err error
+
+	logger := log.NewWithOptions(os.Stderr, log.Options{
+		ReportCaller:    true,
+		ReportTimestamp: true,
+		TimeFormat:      time.Kitchen,
+		Prefix:          "go_proxy",
+	})
 
 	app := &App{
-		Jwt: services.NewJwtService(settings.Secret),
-		Log: log.NewWithOptions(os.Stderr, log.Options{
-			ReportCaller:    true,
-			ReportTimestamp: true,
-			TimeFormat:      time.Kitchen,
-			Prefix:          "go_proxy",
-		}),
+		Jwt:             services.NewJwtService(settings.Secret),
+		Log:             logger,
 		RedirectRecords: settings.Records,
-		Kube:            kube,
 		namespace:       settings.Namespace,
 		name:            settings.Name,
 		version:         settings.Version,
+	}
+
+	app.Kube, err = services.NewKubeClient(logger)
+	if err != nil {
+		panic(err)
 	}
 
 	app.Api = &http.Server{

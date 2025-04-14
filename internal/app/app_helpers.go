@@ -118,7 +118,7 @@ func (a *App) setRedirectRecords(from, to string) {
 
 func (a *App) setRedirectRecordsInMemory(from, to string) {
 	a.mu.Lock()
-	a.RedirectRecords[from] = to
+	 a.RedirectRecords[from] = to
 	a.mu.Unlock()
 }
 
