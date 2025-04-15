@@ -1,4 +1,4 @@
-package app
+package api
 
 import (
 	"encoding/json"
@@ -8,7 +8,7 @@ import (
 	"prx/internal/services"
 )
 
-func (a *App) getRedirectionRecords(host string) (string, error) {
+func (a *Api) getRedirectionRecords(host string) (string, error) {
 	var targetURL string
 	var ok bool
 
@@ -16,7 +16,7 @@ func (a *App) getRedirectionRecords(host string) (string, error) {
 	if !ok {
 		a.Log.Warn("No redirect record found in memory for host:", "host", host)
 		var err error
-		redirectRecords, err := a.Kube.GetProxyMappings(a.namespace, a.name)
+		redirectRecords, err := a.Kube.GetProxyMappings(a.Namespace, a.Name)
 		if err != nil {
 			a.Log.Error("Error getting redirect records from cluster", "err", err)
 			return "", fmt.Errorf("no redirect records found in cluster for host %s", host)
@@ -32,12 +32,12 @@ func (a *App) getRedirectionRecords(host string) (string, error) {
 	return targetURL, nil
 }
 
-func (a *App) getAllRedirectionRecords() (map[string]string, error) {
+func (a *Api) GetAllRedirectionRecords() (map[string]string, error) {
 
 	res := a.RedirectRecords
 
 	if len(res) < 1 {
-		redirectRecords, err := a.Kube.GetProxyMappings(a.namespace, a.name)
+		redirectRecords, err := a.Kube.GetProxyMappings(a.Namespace, a.Name)
 		if err != nil {
 			a.Log.Error("Error getting redirect records from cluster", "err", err)
 			return res, fmt.Errorf("no redirect records found in cluster %s", err)
@@ -48,7 +48,7 @@ func (a *App) getAllRedirectionRecords() (map[string]string, error) {
 	return res, nil
 }
 
-func (a *App) Response(w http.ResponseWriter, data interface{}, statusCode int) {
+func (a *Api) Response(w http.ResponseWriter, data interface{}, statusCode int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 
@@ -79,16 +79,16 @@ func (a *App) Response(w http.ResponseWriter, data interface{}, statusCode int) 
 	}
 }
 
-func (a *App) printSettings(token, secret string) {
+func (a *Api) printSettings(token, secret string) {
 	a.Log.Info("=====================================")
-	a.Log.Info("Project    ", "name   ", a.name)
-	a.Log.Info("Version    ", "version", a.version)
+	a.Log.Info("Project    ", "name   ", a.Name)
+	a.Log.Info("Version    ", "version", a.Version)
 	a.Log.Info("JWT Secret ", "secret ", secret)
 	a.Log.Info("JWT Token  ", "token  ", token)
 	a.Log.Info("=====================================")
 }
 
-func (a *App) readRedirectRecord(host string) (string, bool) {
+func (a *Api) readRedirectRecord(host string) (string, bool) {
 	a.mu.Lock()
 	targetURL, ok := a.RedirectRecords[host]
 	a.mu.Unlock()
@@ -96,34 +96,34 @@ func (a *App) readRedirectRecord(host string) (string, bool) {
 	return targetURL, ok
 }
 
-func (a *App) deleteRedirectRecords(host string) {
+func (a *Api) DeleteRedirectRecords(host string) {
 	a.deleteRedirectRecordsInMemory(host)
 	a.deleteRedirectRecordsInCluster(host)
 }
 
-func (a *App) deleteRedirectRecordsInMemory(host string) {
+func (a *Api) deleteRedirectRecordsInMemory(host string) {
 	a.mu.Lock()
 	delete(a.RedirectRecords, host)
 	a.mu.Unlock()
 }
 
-func (a *App) deleteRedirectRecordsInCluster(host string) {
-	a.Kube.DeleteProxy(a.namespace, host)
+func (a *Api) deleteRedirectRecordsInCluster(host string) {
+	a.Kube.DeleteProxy(a.Namespace, host)
 }
 
-func (a *App) setRedirectRecords(from, to string) {
+func (a *Api) SetRedirectRecords(from, to string) {
 	a.setRedirectRecordsInMemory(from, to)
 	a.setRedirectRecordsInCluster(from, to)
 }
 
-func (a *App) setRedirectRecordsInMemory(from, to string) {
+func (a *Api) setRedirectRecordsInMemory(from, to string) {
 	a.mu.Lock()
-	 a.RedirectRecords[from] = to
+	a.RedirectRecords[from] = to
 	a.mu.Unlock()
 }
 
-func (a *App) setRedirectRecordsInCluster(from, to string) error {
-	err := a.Kube.AddProxyMapping(a.namespace, a.name, services.ProxyMapping{
+func (a *Api) setRedirectRecordsInCluster(from, to string) error {
+	err := a.Kube.AddProxyMapping(a.Namespace, a.Name, services.ProxyMapping{
 		From: from,
 		To:   to,
 	})
@@ -131,6 +131,6 @@ func (a *App) setRedirectRecordsInCluster(from, to string) error {
 }
 
 // Use this simply to avoid typing out extra syntax for fmt.Errorf(). Because its shorter thats why...
-func (a *App) Err(err string, messages ...any) error {
+func (a *Api) Err(err string, messages ...any) error {
 	return fmt.Errorf(err, messages...)
 }

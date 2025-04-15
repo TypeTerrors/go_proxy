@@ -2,8 +2,12 @@ package utils
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"os/signal"
 	"reflect"
 	"strings"
+	"syscall"
 )
 
 func ValidateFields(input any) string {
@@ -48,4 +52,27 @@ func ValidateFields(input any) string {
 		return strings.Join(invalidProps, ", ")
 	}
 	return ""
+}
+
+func GracefulShutdown(done <-chan error) {
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	select {
+	case sig := <-sigChan:
+		log.Printf("Received signal: %v. Shutting down...", sig)
+	case err := <-done:
+		if err != nil {
+			log.Printf("A server terminated with error: %v", err)
+		} else {
+			log.Println("A server ended gracefully.")
+		}
+	}
+
+	err := <-done
+	if err != nil {
+		log.Printf("Other server terminated with error: %v", err)
+	}
+	log.Println("Exiting main")
 }

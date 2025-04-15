@@ -1,4 +1,4 @@
-package app
+package api
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func (a *App) HandleRequests(w http.ResponseWriter, req *http.Request) {
+func (a *Api) HandleRequests(w http.ResponseWriter, req *http.Request) {
 
 	targetURL, err := a.getRedirectionRecords(req.Host)
 	if err != nil {
@@ -29,7 +29,7 @@ func (a *App) HandleRequests(w http.ResponseWriter, req *http.Request) {
 	proxy.ServeHTTP(w, req)
 }
 
-func (a *App) HandleAddNewProxy(w http.ResponseWriter, req *http.Request) {
+func (a *Api) HandleAddNewProxy(w http.ResponseWriter, req *http.Request) {
 
 	var body models.AddNewProxy
 	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
@@ -42,18 +42,18 @@ func (a *App) HandleAddNewProxy(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err := a.Kube.AddNewProxy(body, a.namespace, a.name)
+	err := a.Kube.AddNewProxy(body, a.Namespace, a.Name)
 	if err != nil {
 		a.Response(w, a.Err("configuration error: %s", err), http.StatusInternalServerError)
 		return
 	}
 
-	a.setRedirectRecords(body.From, body.To)
+	a.SetRedirectRecords(body.From, body.To)
 
 	a.Response(w, nil, http.StatusCreated)
 }
 
-func (a *App) HandleDeleteProxy(w http.ResponseWriter, req *http.Request) {
+func (a *Api) HandleDeleteProxy(w http.ResponseWriter, req *http.Request) {
 
 	var body models.DelOldProxy
 	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
@@ -66,18 +66,18 @@ func (a *App) HandleDeleteProxy(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err := a.Kube.DeleteProxy(a.namespace, body.From)
+	err := a.Kube.DeleteProxy(a.Namespace, body.From)
 	if err != nil {
 		a.Response(w, a.Err("configuration error %s", err), http.StatusInternalServerError)
 		return
 	}
 
-	a.deleteRedirectRecords(body.From)
+	a.DeleteRedirectRecords(body.From)
 
 	a.Response(w, nil, http.StatusCreated)
 }
 
-func (a *App) HandlePatchProxy(w http.ResponseWriter, req *http.Request) {
+func (a *Api) HandlePatchProxy(w http.ResponseWriter, req *http.Request) {
 	var body models.PatchOldProxy
 	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
 		a.Response(w, err, http.StatusInternalServerError)
@@ -89,28 +89,28 @@ func (a *App) HandlePatchProxy(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err := a.Kube.DeleteProxy(a.namespace, body.From)
+	err := a.Kube.DeleteProxy(a.Namespace, body.From)
 	if err != nil {
 		a.Response(w, a.Err("configuration error %s", err), http.StatusInternalServerError)
 		return
 	}
 
-	a.deleteRedirectRecords(body.From)
+	a.DeleteRedirectRecords(body.From)
 
-	err = a.Kube.AddNewProxy(body, a.namespace, a.name)
+	err = a.Kube.AddNewProxy(body, a.Namespace, a.Name)
 	if err != nil {
 		a.Response(w, a.Err("configuration error: %s", err), http.StatusInternalServerError)
 		return
 	}
 
-	a.setRedirectRecords(body.From, body.To)
+	a.SetRedirectRecords(body.From, body.To)
 
 	a.Response(w, nil, http.StatusCreated)
 }
 
-func (a *App) HandleGetRedirectionRecords(w http.ResponseWriter, req *http.Request) {
+func (a *Api) HandleGetRedirectionRecords(w http.ResponseWriter, req *http.Request) {
 
-	records, err := a.getAllRedirectionRecords()
+	records, err := a.GetAllRedirectionRecords()
 	if err != nil {
 		a.Response(w, err, http.StatusInternalServerError)
 	}
@@ -131,11 +131,11 @@ func (a *App) HandleGetRedirectionRecords(w http.ResponseWriter, req *http.Reque
 	a.Response(w, res, http.StatusOK)
 }
 
-func (a *App) StatusHandler(w http.ResponseWriter, req *http.Request) {
+func (a *Api) StatusHandler(w http.ResponseWriter, req *http.Request) {
 	response := models.Health{
 		Status:  "OK",
 		Time:    time.Now().Format(time.RFC3339),
-		Version: a.version,
+		Version: a.Version,
 	}
 
 	a.Response(w, response, http.StatusOK)

@@ -1,11 +1,11 @@
-package app
+package api
 
 import (
 	"net/http"
 	"strings"
 )
 
-func (a *App) LoggingMiddleware(next http.Handler) http.Handler {
+func (a *Api) LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		a.Log.Info("new request:", "method", r.Method, "path", r.URL.Path, "host", r.Host)
 		a.Log.Info(r.Header.Get("X-Forwarded-Host"))
@@ -13,9 +13,9 @@ func (a *App) LoggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func (a *App) AuthenticationMiddleware(next http.Handler) http.Handler {
+func (a *Api) AuthenticationMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.Contains(r.Host, a.name) {
+		if !strings.Contains(r.Host, a.Name) {
 			a.Response(w, a.Err("operation not permitted"), http.StatusServiceUnavailable)
 			return
 		}

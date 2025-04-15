@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+option go_package = "/proto;prx";
+
+package prx;
+
+// Service definition that mirrors your API endpoints
+service ProxyService {
+    rpc AddNewProxy (AddNewProxyRequest) returns (Response);
+    rpc DeleteProxy (DeleteProxyRequest) returns (Response);
+    rpc PatchProxy (PatchProxyRequest) returns (Response);
+    rpc GetRedirectionRecords (GetRedirectionRecordsRequest) returns (GetRedirectionRecordsResponse);
+    rpc Health (HealthRequest) returns (HealthResponse);
+}
+
+// Message definitions for the endpoints
+
+message AddNewProxyRequest {
+    string from = 1;
+    string to = 2;
+    string cert = 3;
+    string key = 4;
+}
+
+message DeleteProxyRequest {
+    string from = 1;
+}
+
+message PatchProxyRequest {
+    string from = 1;
+    string to = 2;
+    string cert = 3;
+    string key = 4;
+}
+
+message GetRedirectionRecordsRequest {}
+
+message RedirectionRecord {
+    string from = 1;
+    string to = 2;
+}
+
+message GetRedirectionRecordsResponse {
+    repeated RedirectionRecord records = 1;
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+    string status = 1;
+    string time = 2;
+    string version = 3;
+}
+
+message Response {
+    bool success = 1;
+    string error = 2;
+}
