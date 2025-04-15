@@ -85,7 +85,20 @@ jobs:
             run: |
               echo "Creating ServiceAccount prx-user in namespace..."
               kubectl create serviceaccount prx-user -n ${{ secrets.NAME }} --dry-run=client -o yaml | kubectl apply -f -
-
+          
+          - name: Create Non-Expiring Token for ServiceAccount
+            run: |
+              kubectl apply -f - <<EOF
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: prx-user-token
+                namespace: ${{ secrets.NAME }}
+                annotations:
+                  kubernetes.io/service-account.name: prx-user
+              type: kubernetes.io/service-account-token
+              EOF
+          
           - name: Create Role for ServiceAccount
             run: |
               echo "Creating Role prx-user-role in namespace..."
@@ -126,13 +139,12 @@ jobs:
                 apiGroup: rbac.authorization.k8s.io
               EOF
 
-          - name: Create token for ServiceAccount
-            id: create_token
+          - name: Get Non-Expiring Token for ServiceAccount
+            id: get_token
             run: |
-              echo "Creating token for ServiceAccount prx-user..."
-              TOKEN=$(kubectl create token prx-user -n ${{ secrets.NAME }})
+              TOKEN=$(kubectl get secret prx-user-token -n ${{ secrets.NAME }} -o jsonpath='{.data.token}' | base64 --decode)
               if [ -z "$TOKEN" ]; then
-                echo "Failed to create token for prx-user" >&2
+                echo "Failed to get token from prx-user-token" >&2
                 exit 1
               fi
               echo "TOKEN=${TOKEN}" >> $GITHUB_OUTPUT
@@ -153,9 +165,8 @@ jobs:
             run: |
               echo "Generating kubeconfig file prx-kubeconfig.yaml..."
               
-              TOKEN=${{ steps.create_token.outputs.TOKEN }}
+              TOKEN=${{ steps.get_token.outputs.TOKEN }}
               CLUSTER_SERVER=${{ steps.get_cluster_info.outputs.CLUSTER_SERVER }}
-
               CA_DATA=${{ steps.get_cluster_info.outputs.CA_DATA }}
               
               cat <<EOF > prx-kubeconfig.yaml
