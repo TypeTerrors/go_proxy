@@ -1,4 +1,4 @@
-package main
+package client
 
 import (
 	"fmt"
@@ -84,7 +84,7 @@ const (
 // Model
 // -----------------------------------------------------------------------------
 
-type model struct {
+type auth struct {
 	state state
 
 	// Bubbles
@@ -107,11 +107,6 @@ type model struct {
 
 type tickMsg time.Time
 
-// For clipboard copy completion
-type copyDoneMsg struct {
-	err error
-}
-
 // -----------------------------------------------------------------------------
 // Commands
 // -----------------------------------------------------------------------------
@@ -123,18 +118,11 @@ func tickCmd() tea.Cmd {
 	})
 }
 
-func copyToClipboardCmd(str string) tea.Cmd {
-	return func() tea.Msg {
-		clipboard.Write(clipboard.FmtText, []byte(str))
-		return copyDoneMsg{nil}
-	}
-}
-
 // -----------------------------------------------------------------------------
 // Init
 // -----------------------------------------------------------------------------
 
-func (m model) Init() tea.Cmd {
+func (m auth) Init() tea.Cmd {
 	// Start by blinking the text input cursor
 	return textinput.Blink
 }
@@ -143,7 +131,7 @@ func (m model) Init() tea.Cmd {
 // Update
 // -----------------------------------------------------------------------------
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m auth) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.state {
 
 	// 1) Input phase
@@ -221,7 +209,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View
 // -----------------------------------------------------------------------------
 
-func (m model) View() string {
+func (m auth) View() string {
 	switch m.state {
 	// 1) Input Secret
 	case stateInputSecret:
@@ -279,7 +267,7 @@ func (m model) View() string {
 // -----------------------------------------------------------------------------
 var Version = "N/A"
 
-func main() {
+func RunAuthUI() {
 	// Initialize the clipboard library
 	if err := clipboard.Init(); err != nil {
 		fmt.Println("Clipboard init error:", err)
@@ -298,7 +286,7 @@ func main() {
 	)
 
 	// Create our initial model
-	m := model{
+	m := auth{
 		state:    stateInputSecret,
 		input:    ti,
 		progress: prog,

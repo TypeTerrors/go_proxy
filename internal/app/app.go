@@ -57,16 +57,6 @@ func NewProxy(settings models.NewProxySettings) *App {
 }
 
 func (a *App) Start() {
-
-	jwt, err := a.Jwt.GenerateJWT()
-	if err != nil {
-		a.Log.Fatal("Server failed generate json web token on startup:", "error", err)
-	}
-
-	a.printSettings(jwt, os.Getenv("JWT_SECRET"))
-
-	a.Log.Info("Server started on port 80")
-	if err := a.Api.ListenAndServe(); err != nil {
-		a.Log.Fatal("Server failed to start:", "error", err)
-	}
+	a.startApi()
+	a.startGRPC()
 }
