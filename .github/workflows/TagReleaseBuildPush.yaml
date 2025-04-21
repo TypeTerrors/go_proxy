@@ -48,7 +48,7 @@ jobs:
           go build -ldflags "-X prx/internal/rpc.ClientVersion=${{ needs.prepare.outputs.tag }}" -o prx-client ./cmd/client/client.go
 
       - name: Upload CLI binary
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: prx-client
           path: prx-client
