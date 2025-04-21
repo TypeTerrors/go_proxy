@@ -272,8 +272,8 @@ jobs:
           echo "${{ secrets.TLS_CERT }}" > /tmp/tls.crt
           echo "${{ secrets.TLS_KEY }}"  > /tmp/tls.key
 
-          TLS_KEY_B64=$(base64 -w 0 /tmp/tls.crt)
-          TLS_CRT_B64=$(base64 -w 0 /tmp/tls.key)
+          TLS_KEY_B64=$(base64 -w 0 /tmp/tls.key)
+          TLS_CRT_B64=$(base64 -w 0 /tmp/tls.crt)
 
           echo "TLS_KEY_B64=${TLS_KEY_B64}" >> $GITHUB_OUTPUT
           echo "TLS_CRT_B64=${TLS_CRT_B64}" >> $GITHUB_OUTPUT
