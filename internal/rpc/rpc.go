@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/log"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -88,13 +89,13 @@ func Run(args []string) {
 		os.Exit(1)
 	}
 
-	conn, err := grpc.NewClient(*addr, grpc.WithInsecure())
+	conn, err := grpc.NewClient(*addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer conn.Close()
-	client := pb.NewReverseClient(conn)
 
+	client := pb.NewReverseClient(conn)
 	baseCtx := metadata.AppendToOutgoingContext(context.Background(),
 		"Authorization", "Bearer "+*token)
 	ctx, cancel := context.WithTimeout(baseCtx, 5*time.Second)
