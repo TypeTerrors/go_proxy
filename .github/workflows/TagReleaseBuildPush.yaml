@@ -278,19 +278,14 @@ jobs:
           echo "TLS_KEY_B64=${TLS_KEY_B64}" >> $GITHUB_OUTPUT
           echo "TLS_CRT_B64=${TLS_CRT_B64}" >> $GITHUB_OUTPUT
       
-      - id: encode_tls_crt
-        name: Mask tls crt secret
-        run: echo "::add-mask::${{ steps.TLS_GRPC.outputs.TLS_CRT_B64 }}"
-
-      - id: encode_tls_key
-        name: Mask tls key secret
-        run: echo "::add-mask::${{ steps.TLS_GRPC.outputs.TLS_KEY_B64 }}"
+      - name: Mask TLS outputs
+        run: |
+          echo "::add-mask::${{ steps.TLS_GRPC.outputs.TLS_CRT_B64 }}"
+          echo "::add-mask::${{ steps.TLS_GRPC.outputs.TLS_KEY_B64 }}"
 
       - name: Deploy with Helm
         env:
           PRX_KUBE_CONFIG_B64: ${{ steps.encode_kubeconfig.outputs.kubeconfig_b64 }}
-          TLS_KEY_B64: ${{ steps.encode_tls_key.outputs.TLS_KEY_B64 }}
-          TLS_CRT_B64: ${{ steps.encode_tls_key.outputs.TLS_CRT_B64 }}
         run: |
           helm upgrade --install go-proxy ./charts \
             --namespace "${{ secrets.NAME }}" \
@@ -300,8 +295,8 @@ jobs:
             --set application.replicas=2 \
             --set-string application.imagePullSecrets="${{ secrets.IMAGE_PULL_SECRET }}" \
             --set-string application.JWT_SECRET="${{ secrets.JWT_SECRET }}" \
-            --set-string application.TLS_CRT="${{ steps.encode_tls_key.outputs.TLS_CRT_B64 }}" \
-            --set-string application.TLS_KEY="${{ steps.encode_tls_key.outputs.TLS_KEY_B64 }}" \
+            --set-string application.TLS_CRT="${{ steps.TLS_GRPC.outputs.TLS_CRT_B64 }}" \
+            --set-string application.TLS_KEY="${{ steps.TLS_GRPC.outputs.TLS_KEY_B64 }}" \
             --set-string application.PRX_KUBE_CONFIG="${{ steps.encode_kubeconfig.outputs.kubeconfig_b64 }}" \
             --set global.image.repository=ghcr.io/typeterrors/go_proxy \
             --set global.image.tag=${{ needs.prepare.outputs.tag }}
