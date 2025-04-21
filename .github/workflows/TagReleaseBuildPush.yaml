@@ -82,7 +82,9 @@ jobs:
         run: docker image prune -af
 
   release:
-    needs: docker
+    needs:
+      - prepare
+      - docker
     runs-on: ubuntu-latest
     steps:
       - name: Create Release
@@ -97,7 +99,9 @@ jobs:
           prerelease: false
 
   deploy:
-    needs: release
+    needs:
+      - prepare
+      - release
     runs-on: ubuntu-latest
     steps:
       - name: Set up Kubectl
