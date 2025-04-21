@@ -46,7 +46,7 @@ func (s *grpcServer) authInterceptor(
 ) (interface{}, error) {
 
 	md, _ := metadata.FromIncomingContext(ctx)
-	auth := md["authorization"]
+	auth := md["Authorization"]
 	if len(auth) == 0 {
 		return nil, status.Errorf(codes.Unauthenticated, "authorization required")
 	}
