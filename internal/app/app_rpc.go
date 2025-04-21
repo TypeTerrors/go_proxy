@@ -33,11 +33,9 @@ func (a *App) startGRPC() {
 
 	pb.RegisterReverseServer(srv, &grpcServer{app: a})
 	a.Log.Info("gRPC server listening", "port", port)
-	go func() {
-		if err := srv.Serve(lis); err != nil {
-			a.Log.Fatal("gRPC serve error", "err", err)
-		}
-	}()
+	if err := srv.Serve(lis); err != nil {
+		a.Log.Fatal("gRPC serve error", "err", err)
+	}
 }
 
 func (s *grpcServer) authInterceptor(

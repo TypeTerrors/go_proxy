@@ -57,6 +57,17 @@ func NewProxy(settings models.NewProxySettings) *App {
 }
 
 func (a *App) Start() {
-	a.startApi()
-	a.startGRPC()
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		a.startApi()
+	}()
+
+	go func() {
+		defer wg.Done()
+		a.startGRPC()
+	}()
+	wg.Wait()
 }
