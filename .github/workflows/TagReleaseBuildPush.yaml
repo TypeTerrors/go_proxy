@@ -90,8 +90,13 @@ jobs:
     needs:
       - prepare
       - docker
+      - build-client
     runs-on: ubuntu-latest
     steps:
+      - name: Download CLI binary
+        uses: actions/download-artifact@v4
+        with:
+          name: prx-client
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -102,6 +107,8 @@ jobs:
           release_name: ${{ needs.prepare.outputs.tagname }}
           draft: false
           prerelease: false
+          files: |
+            prx-client
 
   deploy:
     needs:
