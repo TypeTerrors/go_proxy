@@ -1,4 +1,4 @@
-package main
+package rpc
 
 import (
 	"crypto/rand"
@@ -32,17 +32,17 @@ func generateHMACKey(length int) (string, error) {
 
 // MODEL
 
-type model struct {
+type secret struct {
 	steps     []string
 	index     int
 	width     int
 	height    int
 	spinner   spinner.Model
 	progress  progress.Model
-	viewFinal bool   // When true, we show the “final window”
-	secret    string // The actual HMAC key
-	copied    bool   // Whether user has copied the secret
-	doneSteps bool   // Used for step simulation
+	viewFinal bool
+	secret    string
+	copied    bool
+	doneSteps bool
 }
 
 // We'll reuse our "installed step" message from the step simulator.
@@ -65,8 +65,7 @@ var (
 
 // INIT
 
-func newModel() model {
-	// Our simulated “steps”
+func newModel() secret {
 	simSteps := []string{
 		"Gathering cryptographic entropy",
 		"Generating 256-bit HMAC key",
@@ -84,7 +83,7 @@ func newModel() model {
 	s := spinner.New()
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("63"))
 
-	return model{
+	return secret{
 		steps:     simSteps,
 		spinner:   s,
 		progress:  p,
@@ -94,7 +93,7 @@ func newModel() model {
 
 // COMMANDS & MSG
 
-func (m model) Init() tea.Cmd {
+func (m secret) Init() tea.Cmd {
 	// Start the first step
 	return tea.Batch(performStep(m.steps[m.index]), m.spinner.Tick)
 }
@@ -109,13 +108,11 @@ func performStep(step string) tea.Cmd {
 
 // UPDATE
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// If we're in the final view, handle final-view keypresses separately.
+func (m secret) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.viewFinal {
 		return finalViewUpdate(m, msg)
 	}
 
-	// Otherwise, we’re still in “step simulation” mode.
 	switch msg := msg.(type) {
 
 	case tea.WindowSizeMsg:
@@ -128,34 +125,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case installedStepMsg:
-		// We’ve just finished a step
 		step := m.steps[m.index]
 
-		// If we've completed the last step, generate the key and switch to final view.
 		if m.index >= len(m.steps)-1 {
 			secret, err := generateHMACKey(keyLength)
 			if err != nil {
 				log.Fatal("Error generating HMAC key:", err)
 			}
 
-			// Transition to the final “window”.
 			m.doneSteps = true
 			m.viewFinal = true
 			m.secret = secret
 
-			// We'll stop the step-based UI, so no more step commands here.
-			// Instead of quitting, we show the final screen.
 			return m, tea.Printf("%s %s", checkMark, step)
 		}
 
-		// Otherwise, move on to the next step
 		m.index++
 		progressCmd := m.progress.SetPercent(float64(m.index) / float64(len(m.steps)))
 		return m, tea.Batch(
 			progressCmd,
-			// Print a small success line for the step that just finished
 			tea.Printf("%s %s", checkMark, step),
-			// Then start the next step
 			performStep(m.steps[m.index]),
 		)
 
@@ -187,24 +176,20 @@ func copyToClipboardCmd(str string) tea.Cmd {
 }
 
 // finalViewUpdate handles events once we’re in the “final window”.
-func finalViewUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
+func finalViewUpdate(m secret, msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "esc", "q":
-			// Quit from the final screen
 			return m, tea.Quit
 
 		case "c":
-			// Copy secret to clipboard
 			return m, copyToClipboardCmd(m.secret)
 		}
 
 	case copyDoneMsg:
-		// This message arrives after the attempt to write to the clipboard
 		if msg.err != nil {
-			// If there was an error, you could handle it here
 			log.Printf("Error copying to clipboard: %v\n", msg.err)
 		} else {
 			m.copied = true
@@ -217,18 +202,15 @@ func finalViewUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // VIEW
 
-func (m model) View() string {
-	// If we're done with the steps, show the final screen
+func (m secret) View() string {
 	if m.viewFinal {
 		return m.finalView()
 	}
 
-	// Otherwise, render the step simulation UI
 	return m.stepView()
 }
 
-func (m model) stepView() string {
-	// If all steps are done (rare edge case), just a fallback
+func (m secret) stepView() string {
 	if m.doneSteps {
 		return doneStyle.Render("Steps complete!\n")
 	}
@@ -251,7 +233,7 @@ func (m model) stepView() string {
 }
 
 // finalView displays the newly generated secret
-func (m model) finalView() string {
+func (m secret) finalView() string {
 	header := titleStyle.Render("🎉 HMAC Key Generated! 🎉")
 
 	secretLine := fmt.Sprintf("Your new HMAC secret is:\n\n  %s", m.secret)
@@ -276,8 +258,8 @@ func max(a, b int) int {
 
 // MAIN
 
-func main() {
-	mrand.Seed(time.Now().UnixNano()) // Seed pseudo-rand for step-simulation
+func RunSecretUI() {
+	mrand.Seed(time.Now().UnixNano())
 	p := tea.NewProgram(newModel())
 	if _, err := p.Run(); err != nil {
 		fmt.Println("Error running program:", err)

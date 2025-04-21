@@ -1,20 +1,37 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: "{{ .Values.application.name }}"
+  name: {{ .Values.application.name }}
+  annotations:
+    # Terminate TLS here and speak HTTP/2 to backend
+    nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
 spec:
   tls:
+    # TLS secret is the same for both sub‑domains
     - hosts:
-        - "{{ .Values.application.host }}"
-      secretName: "{{ .Values.application.secretName }}"
+        - {{ .Values.application.host }}
+        - rpc.{{ .Values.application.host }}
+      secretName: {{ .Values.application.secretName }}
   rules:
-    - host: "{{ .Values.application.host }}"
+    # HTTP (REST) endpoint
+    - host: {{ .Values.application.host }}
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: "{{ .Values.application.name }}"
+                name: {{ .Values.application.name }}
                 port:
-                  number: 80
+                  name: http
+    # gRPC endpoint
+    - host: rpc.{{ .Values.application.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.application.name }}
+                port:
+                  name: grpc

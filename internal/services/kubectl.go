@@ -177,7 +177,6 @@ func (k Kube) DeleteProxy(namespace, name string) error {
 		return fmt.Errorf("failed to get ingress: %v", err)
 	}
 
-	// Check if the "managed-by" label is present and equals "prx"
 	if ingress.Labels == nil || ingress.Labels["managed-by"] != "prx" {
 		return fmt.Errorf("ingress '%s' is not managed by prx and cannot be deleted", ingressName)
 	}
@@ -187,7 +186,6 @@ func (k Kube) DeleteProxy(namespace, name string) error {
 		return fmt.Errorf("failed to get ingress: %v", err)
 	}
 
-	// Check if the "managed-by" label is present and equals "prx"
 	if secrets.Labels == nil || secrets.Labels["managed-by"] != "prx" {
 		return fmt.Errorf("secret '%s' is not managed by prx and cannot be deleted", ingressName)
 	}

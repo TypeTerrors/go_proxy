@@ -9,6 +9,11 @@ spec:
   selector:
     app: "{{ .Values.application.name }}"
   ports:
-    - protocol: TCP
+    - name: http
+      protocol: TCP
       port: 80
-      targetPort: 80
+      targetPort: http
+    - name: grpc
+      protocol: TCP
+      port: 50051
+      targetPort: grpc

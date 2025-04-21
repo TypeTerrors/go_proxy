@@ -3,3 +3,4 @@
 *.key
 data/
 prx-kubeconfig.yaml
+*.sh

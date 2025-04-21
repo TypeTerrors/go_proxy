@@ -8,236 +8,248 @@ on:
             - dev
 
 jobs:
-    build-and-deploy:
-        runs-on: ubuntu-latest
-        steps:
-          - name: Checkout repository
-            uses: actions/checkout@v3
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.create_tag.outputs.tag }}
+      tagname: ${{ steps.create_tag.outputs.tagname }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-          - name: Get short SHA
-            uses: benjlevesque/short-sha@v3.0
-            id: short-sha
-            with:
-                length: 6
+      - name: Get short SHA
+        uses: benjlevesque/short-sha@v3.0
+        id: short-sha
+        with:
+          length: 6
 
-          - name: Calculate next tag
-            id: create_tag
-            run: |
-                COMMIT_SHA=${{ steps.short-sha.outputs.sha }}
-                PR_NUMBER=${{ github.event.pull_request.number }}
-                echo "tag=v_${COMMIT_SHA}.${PR_NUMBER}" >> $GITHUB_OUTPUT
-                echo "tagname=v_${COMMIT_SHA}.${PR_NUMBER}" >> $GITHUB_OUTPUT 
+      - name: Calculate next tag
+        id: create_tag
+        run: |
+          COMMIT_SHA=${{ steps.short-sha.outputs.sha }}
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          echo "tag=v_${COMMIT_SHA}.${PR_NUMBER}" >> $GITHUB_OUTPUT
+          echo "tagname=v_${COMMIT_SHA}.${PR_NUMBER}" >> $GITHUB_OUTPUT
 
-          - name: Log in to GitHub Container Registry
-            run: |
-                echo "${{ secrets.GH_RUNNER }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+  build-client:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-          - name: Build Docker image
-            run: |
-              echo "Building go_proxy image"
-              docker build -t ghcr.io/typeterrors/go_proxy:${{ steps.create_tag.outputs.tag }} \
-                  --build-arg VERSION=${{ steps.create_tag.outputs.tag }} \
-                  -f ./go_proxy.dockerfile .
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.20
 
-          - name: Push Docker image
-            run: |
-              echo "Pushing Docker image"
-              docker push ghcr.io/typeterrors/go_proxy:${{ steps.create_tag.outputs.tag }}
-              docker tag ghcr.io/typeterrors/go_proxy:${{ steps.create_tag.outputs.tag }} ghcr.io/typeterrors/go_proxy:latest
-              docker push ghcr.io/typeterrors/go_proxy:latest
+      - name: Build CLI client
+        run: |
+          go build -ldflags "-X prx/internal/rpc.ClientVersion=${{ needs.prepare.outputs.tag }}" -o prx-client ./cmd/client/client.go
 
-          - name: Clean up Docker images
-            run: |
-              echo "Cleaning up Docker images"
-              docker image prune -af
+      - name: Upload CLI artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: prx-client
+          path: prx-client
 
-          - name: Create Release
-            id: create_release
-            if: success()
-            uses: actions/create-release@v1
-            env:
-                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-            with:
-                tag_name: ${{ steps.create_tag.outputs.tag }}
-                release_name: ${{ steps.create_tag.outputs.tagname }}
-                draft: false
-                prerelease: false
+  docker:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-            # Set up Kubectl
-          - name: Set up Kubectl
-            uses: azure/setup-kubectl@v4
-            with:
-                version: 'v1.28.0' # Specify your Kubernetes version
+      - name: Log in to GitHub Container Registry
+        run: |
+          echo "${{ secrets.GH_RUNNER }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-            # Set up Helm
-          - name: Set up Helm
-            uses: azure/setup-helm@v3
-            with:
-                version: 'v3.8.0' # Specify your Helm version
+      - name: Build Docker image
+        run: |
+          echo "Building go_proxy image"
+          docker build -t ghcr.io/typeterrors/go_proxy:${{ needs.prepare.outputs.tag }} \
+            --build-arg VERSION=${{ needs.prepare.outputs.tag }} \
+            -f ./go_proxy.dockerfile .
 
-          - name: Configure Kube
-            run: |
-              mkdir -p ~/.kube
-              printf "%s" "${{ secrets.KUBECONFIG }}" > ~/.kube/config
-              kubectl config get-contexts
+      - name: Push Docker image
+        run: |
+          echo "Pushing go_proxy image"
+          docker push ghcr.io/typeterrors/go_proxy:${{ needs.prepare.outputs.tag }}
+          docker tag ghcr.io/typeterrors/go_proxy:${{ needs.prepare.outputs.tag }} ghcr.io/typeterrors/go_proxy:latest
+          docker push ghcr.io/typeterrors/go_proxy:latest
 
-          - name: Create ServiceAccount in namespace
-            run: |
-              echo "Creating ServiceAccount prx-user in namespace..."
-              kubectl create serviceaccount prx-user -n ${{ secrets.NAME }} --dry-run=client -o yaml | kubectl apply -f -
-          
-          - name: Create Non-Expiring Token for ServiceAccount
-            run: |
-              kubectl apply -f - <<EOF
-              apiVersion: v1
-              kind: Secret
-              metadata:
-                name: prx-user-token
-                namespace: ${{ secrets.NAME }}
-                annotations:
-                  kubernetes.io/service-account.name: prx-user
-              type: kubernetes.io/service-account-token
-              EOF
-          
-          - name: Create Role for ServiceAccount
-            run: |
-              echo "Creating Role prx-user-role in namespace..."
-              cat <<EOF | kubectl apply -f -
-              apiVersion: rbac.authorization.k8s.io/v1
-              kind: Role
-              metadata:
-                name: prx-user-role
-                namespace: ${{ secrets.NAME }}
-              rules:
-              - apiGroups: [""]
-                resources: ["secrets"]
-                verbs: ["create", "get", "list", "update", "patch", "delete"]
-              - apiGroups: ["networking.k8s.io"]
-                resources: ["ingresses"]
-                verbs: ["create", "get", "list", "update", "patch", "delete"]
-              - apiGroups: [""]
-                resources: ["configmaps"]
-                verbs: ["get", "list", "create", "update", "patch", "delete"]
-              EOF
+      - name: Clean up Docker images
+        run: docker image prune -af
 
-          - name: Create RoleBinding for ServiceAccount
-            run: |
-              echo "Creating RoleBinding prx-user-rolebinding in namespace..."
-              cat <<EOF | kubectl apply -f -
-              apiVersion: rbac.authorization.k8s.io/v1
-              kind: RoleBinding
-              metadata:
-                name: prx-user-rolebinding
-                namespace: ${{ secrets.NAME }}
-              subjects:
-              - kind: ServiceAccount
-                name: prx-user
-                namespace: ${{ secrets.NAME }}
-              roleRef:
-                kind: Role
-                name: prx-user-role
-                apiGroup: rbac.authorization.k8s.io
-              EOF
+  release:
+    needs:
+      - prepare
+      - docker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          release_name: ${{ needs.prepare.outputs.tagname }}
+          draft: false
+          prerelease: false
 
-          - name: Get Non-Expiring Token for ServiceAccount
-            id: get_token
-            run: |
-              TOKEN=$(kubectl get secret prx-user-token -n ${{ secrets.NAME }} -o jsonpath='{.data.token}' | base64 --decode)
-              if [ -z "$TOKEN" ]; then
-                echo "Failed to get token from prx-user-token" >&2
-                exit 1
-              fi
-              echo "TOKEN=${TOKEN}" >> $GITHUB_OUTPUT
+  deploy:
+    needs:
+      - prepare
+      - release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'v1.28.0'
 
-          - name: Get cluster info
-            id: get_cluster_info
-            run: |
-              echo "Retrieving cluster server URL and CA data..."
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'v3.8.0'
 
-              CLUSTER_SERVER=$(kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.server}')
-              CA_DATA=$(kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}')
+      - name: Configure Kube
+        run: |
+          mkdir -p ~/.kube
+          printf "%s" "${{ secrets.KUBECONFIG }}" > ~/.kube/config
+          kubectl config get-contexts
 
-              echo "CLUSTER_SERVER=${CLUSTER_SERVER}" >> $GITHUB_OUTPUT
-              echo "CA_DATA=${CA_DATA}" >> $GITHUB_OUTPUT
+      - name: Create ServiceAccount in namespace
+        run: |
+          kubectl create serviceaccount prx-user -n ${{ secrets.NAME }} --dry-run=client -o yaml | kubectl apply -f -
 
-          - name: Generate kubeconfig file
-            id: generate_kubeconfig
-            run: |
-              echo "Generating kubeconfig file prx-kubeconfig.yaml..."
-              
-              TOKEN=${{ steps.get_token.outputs.TOKEN }}
-              CLUSTER_SERVER=${{ steps.get_cluster_info.outputs.CLUSTER_SERVER }}
-              CA_DATA=${{ steps.get_cluster_info.outputs.CA_DATA }}
-              
-              cat <<EOF > prx-kubeconfig.yaml
-              apiVersion: v1
-              kind: Config
-              clusters:
-              - name: my-cluster
-                cluster:
-                  server: ${CLUSTER_SERVER}
-                  certificate-authority-data: ${CA_DATA}
-              users:
-              - name: prx-user
-                user:
-                  token: ${TOKEN}
-              contexts:
-              - name: prx-context
-                context:
-                  cluster: my-cluster
-                  user: prx-user
-                  namespace: ${{ secrets.NAME }}
-              current-context: prx-context
-              EOF
+      - name: Create Non-Expiring Token for ServiceAccount
+        run: |
+          kubectl apply -f - <<EOF
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: prx-user-token
+            namespace: ${{ secrets.NAME }}
+            annotations:
+              kubernetes.io/service-account.name: prx-user
+          type: kubernetes.io/service-account-token
+          EOF
 
-          - name: Base64 encode kubeconfig file
-            id: encode_kubeconfig
-            run: |
-              echo "Encoding kubeconfig file to base64..."
+      - name: Create Role for ServiceAccount
+        run: |
+          cat <<EOF | kubectl apply -f -
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: Role
+          metadata:
+            name: prx-user-role
+            namespace: ${{ secrets.NAME }}
+          rules:
+          - apiGroups: [""]
+            resources: ["secrets"]
+            verbs: ["create","get","list","update","patch","delete"]
+          - apiGroups: ["networking.k8s.io"]
+            resources: ["ingresses"]
+            verbs: ["create","get","list","update","patch","delete"]
+          - apiGroups: [""]
+            resources: ["configmaps"]
+            verbs: ["get","list","create","update","patch","delete"]
+          EOF
 
-              # Use -w 0 to wrap on a single line (Linux). 
-              BASE64_KUBECONFIG=$(base64 -w 0 prx-kubeconfig.yaml)
+      - name: Create RoleBinding for ServiceAccount
+        run: |
+          cat <<EOF | kubectl apply -f -
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          metadata:
+            name: prx-user-rolebinding
+            namespace: ${{ secrets.NAME }}
+          subjects:
+          - kind: ServiceAccount
+            name: prx-user
+            namespace: ${{ secrets.NAME }}
+          roleRef:
+            kind: Role
+            name: prx-user-role
+            apiGroup: rbac.authorization.k8s.io
+          EOF
 
-              echo "kubeconfig_b64=${BASE64_KUBECONFIG}" >> $GITHUB_OUTPUT
+      - name: Get Non-Expiring Token for ServiceAccount
+        id: get_token
+        run: |
+          TOKEN=$(kubectl get secret prx-user-token -n ${{ secrets.NAME }} -o jsonpath='{.data.token}' | base64 --decode)
+          echo "TOKEN=${TOKEN}" >> $GITHUB_OUTPUT
 
-          - name: Create Image Pull Secret
-            run: |
-              kubectl create namespace "${{ secrets.NAME }}" --dry-run=client -o yaml | kubectl apply -f -
-              
-              kubectl create secret docker-registry "${{ secrets.IMAGE_PULL_SECRET }}" \
-                --docker-server=ghcr.io \
-                --docker-username=delduked \
-                --docker-password="${{ secrets.ACCESS_TOKEN }}" \
-                --docker-email="nate@nated.ca" \
-                --namespace="${{ secrets.NAME }}" \
-                --dry-run=client -o yaml | kubectl apply -f -
+      - name: Get cluster info
+        id: get_cluster_info
+        run: |
+          CLUSTER_SERVER=$(kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.server}')
+          CA_DATA=$(kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}')
+          echo "CLUSTER_SERVER=${CLUSTER_SERVER}" >> $GITHUB_OUTPUT
+          echo "CA_DATA=${CA_DATA}" >> $GITHUB_OUTPUT
 
-          - name: Create TLS Secret 
-            env:
-              TLS_CERT: ${{ secrets.TLS_CERT }}
-              TLS_KEY: ${{ secrets.TLS_KEY }}
-            run: |
-              echo "$TLS_CERT" > /tmp/tls.crt
-              echo "$TLS_KEY"  > /tmp/tls.key
+      - name: Generate kubeconfig file
+        id: generate_kubeconfig
+        run: |
+          cat <<EOF > prx-kubeconfig.yaml
+          apiVersion: v1
+          kind: Config
+          clusters:
+          - name: my-cluster
+            cluster:
+              server: ${{ steps.get_cluster_info.outputs.CLUSTER_SERVER }}
+              certificate-authority-data: ${{ steps.get_cluster_info.outputs.CA_DATA }}
+          users:
+          - name: prx-user
+            user:
+              token: ${{ steps.get_token.outputs.TOKEN }}
+          contexts:
+          - name: prx-context
+            context:
+              cluster: my-cluster
+              user: prx-user
+              namespace: ${{ secrets.NAME }}
+          current-context: prx-context
+          EOF
 
-              kubectl create namespace ${{ secrets.NAME }} --dry-run=client -o yaml | kubectl apply -f -
+      - name: Base64 encode kubeconfig file
+        id: encode_kubeconfig
+        run: |
+          BASE64_KUBECONFIG=$(base64 -w 0 prx-kubeconfig.yaml)
+          echo "kubeconfig_b64=${BASE64_KUBECONFIG}" >> $GITHUB_OUTPUT
 
-              kubectl create secret tls ${{ secrets.NAME }}.io-secret \
-                --cert=/tmp/tls.crt \
-                --key=/tmp/tls.key \
-                --namespace=${{ secrets.NAME }} \
-                --dry-run=client -o yaml | kubectl apply -f -
+      - name: Create Image Pull Secret
+        run: |
+          kubectl create namespace ${{ secrets.NAME }} --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret docker-registry ${{ secrets.IMAGE_PULL_SECRET }} \
+            --docker-server=ghcr.io \
+            --docker-username=delduked \
+            --docker-password="${{ secrets.ACCESS_TOKEN }}" \
+            --docker-email="nate@nated.ca" \
+            --namespace="${{ secrets.NAME }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
 
-            # Deploy using Helm
-          - name: Deploy with Helm
-            run: |
-              helm upgrade --install go-proxy ./charts --namespace "${{ secrets.NAME }}" \
-                  --set application.name=${{ secrets.NAME }} \
-                  --set application.host=${{ secrets.NAME }}.io \
-                  --set application.secretName=${{ secrets.NAME }}.io-secret \
-                  --set application.replicas=2 \
-                  --set-string application.imagePullSecrets="${{ secrets.IMAGE_PULL_SECRET }}" \
-                  --set-string application.JWT_SECRET="${{ secrets.JWT_SECRET }}" \
-                  --set-string application.PRX_KUBE_CONFIG="${{ steps.encode_kubeconfig.outputs.kubeconfig_b64 }}" \
-                  --set global.image.repository=ghcr.io/typeterrors/go_proxy \
-                  --set global.image.tag=${{ steps.create_tag.outputs.tag }}
+      - name: Create TLS Secret 
+        run: |
+          echo "${{ secrets.TLS_CERT }}" > /tmp/tls.crt
+          echo "${{ secrets.TLS_KEY }}"  > /tmp/tls.key
+          kubectl create secret tls ${{ secrets.NAME }}.io-secret \
+            --cert=/tmp/tls.crt \
+            --key=/tmp/tls.key \
+            --namespace=${{ secrets.NAME }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy with Helm
+        run: |
+          helm upgrade --install go-proxy ./charts \
+            --namespace "${{ secrets.NAME }}" \
+            --set application.name=${{ secrets.NAME }} \
+            --set application.host=${{ secrets.NAME }}.io \
+            --set application.secretName=${{ secrets.NAME }}.io-secret \
+            --set application.replicas=2 \
+            --set-string application.imagePullSecrets="${{ secrets.IMAGE_PULL_SECRET }}" \
+            --set-string application.JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+            --set-string application.PRX_KUBE_CONFIG="${{ steps.encode_kubeconfig.outputs.kubeconfig_b64 }}" \
+            --set global.image.repository=ghcr.io/typeterrors/go_proxy \
+            --set global.image.tag=${{ needs.prepare.outputs.tag }}

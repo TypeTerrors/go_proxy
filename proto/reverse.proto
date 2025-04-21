@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package prx;
+
+option go_package = "internal/pb;pb";
+
+message ProxyRequest {
+    string from = 1;
+    string to   = 2;
+    string cert = 3; // base64
+    string key  = 4; // base64
+}
+
+message DeleteRequest {
+    string from = 1;
+}
+
+message ListRequest {}
+
+message ListResponse {
+    repeated ProxyRecord records = 1;
+}
+
+message ProxyRecord {
+    string from = 1;
+    string to   = 2;
+}
+
+message Empty {}
+
+service Reverse {
+    rpc Add(ProxyRequest)   returns (Empty);
+    rpc Update(ProxyRequest) returns (Empty);
+    rpc Delete(DeleteRequest) returns (Empty);
+    rpc List(ListRequest)   returns (ListResponse);
+}
