@@ -41,14 +41,14 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.20
+          go-version: 1.24
 
       - name: Build CLI client
         run: |
           go build -ldflags "-X prx/internal/rpc.ClientVersion=${{ needs.prepare.outputs.tag }}" -o prx-client ./cmd/client/client.go
 
-      - name: Upload CLI artifact
-        uses: actions/upload-artifact@v3
+      - name: Upload CLI binary
+        uses: actions/upload-artifact@v2
         with:
           name: prx-client
           path: prx-client
@@ -104,6 +104,9 @@ jobs:
       - release
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
       - name: Set up Kubectl
         uses: azure/setup-kubectl@v4
         with:
@@ -219,6 +222,9 @@ jobs:
           BASE64_KUBECONFIG=$(base64 -w 0 prx-kubeconfig.yaml)
           echo "kubeconfig_b64=${BASE64_KUBECONFIG}" >> $GITHUB_OUTPUT
 
+      - name: Mask kubeconfig secret
+        run: echo "::add-mask::${{ steps.encode_kubeconfig.outputs.kubeconfig_b64 }}"
+
       - name: Create Image Pull Secret
         run: |
           kubectl create namespace ${{ secrets.NAME }} --dry-run=client -o yaml | kubectl apply -f -
@@ -241,6 +247,8 @@ jobs:
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Deploy with Helm
+        env:
+          PRX_KUBE_CONFIG_B64: ${{ steps.encode_kubeconfig.outputs.kubeconfig_b64 }}
         run: |
           helm upgrade --install go-proxy ./charts \
             --namespace "${{ secrets.NAME }}" \
@@ -248,8 +256,8 @@ jobs:
             --set application.host=${{ secrets.NAME }}.io \
             --set application.secretName=${{ secrets.NAME }}.io-secret \
             --set application.replicas=2 \
-            --set-string application.imagePullSecrets="${{ secrets.IMAGE_PULL_SECRET }}" \
-            --set-string application.JWT_SECRET="${{ secrets.JWT_SECRET }}" \
-            --set-string application.PRX_KUBE_CONFIG="${{ steps.encode_kubeconfig.outputs.kubeconfig_b64 }}" \
+            --set application.imagePullSecrets="${{ secrets.IMAGE_PULL_SECRET }}" \
+            --set application.JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+            --set application.PRX_KUBE_CONFIG=$PRX_KUBE_CONFIG_B64 \
             --set global.image.repository=ghcr.io/typeterrors/go_proxy \
             --set global.image.tag=${{ needs.prepare.outputs.tag }}
