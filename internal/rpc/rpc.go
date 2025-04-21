@@ -1,15 +1,16 @@
-package client
+package rpc
 
 import (
 	"context"
 	"encoding/base64"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"prx/internal/pb"
 	"strings"
 	"time"
+
+	"github.com/charmbracelet/log"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -122,7 +123,7 @@ func Run(args []string) {
 		resp, err := client.List(ctx, &pb.ListRequest{})
 		if err == nil {
 			for _, r := range resp.Records {
-				log.Printf("%s -> %s\n", r.From, r.To)
+				log.Infof("%s -> %s\n", r.From, r.To)
 			}
 		}
 	}
@@ -130,5 +131,5 @@ func Run(args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println("OK")
+	log.Info("OK")
 }

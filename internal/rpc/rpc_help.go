@@ -1,4 +1,4 @@
-package client
+package rpc
 
 import (
 	"fmt"
@@ -6,6 +6,8 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 )
+
+var ClientVersion string
 
 func PrintHelp() {
 	title := lipgloss.NewStyle().
@@ -38,6 +40,9 @@ func PrintHelp() {
 		"  prx secret",
 		"  prx auth",
 		"  prx add --addr proxy:50051 --token $JWT --from example.com --to http://1.2.3.4 --cert /path/to.crt --key /path/to.key",
+		"",
+		descStyle.Render("Version:"),
+		"  " + ClientVersion,
 	}
 
 	box := lipgloss.NewStyle().
