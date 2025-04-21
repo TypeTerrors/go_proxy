@@ -6,6 +6,8 @@ global:
 application:
    name: application name
    host: application's FQDN
+   TLS_CRT: ""
+   TLS_KEY: ""
    secretName: application's FQDN secret name
    replicas: 2
    imagePullSecrets: <your-image-pull-secret>
