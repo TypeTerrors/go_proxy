@@ -25,13 +25,11 @@ spec:
               value: "{{ .Values.application.name }}"
             - name: PRX_KUBE_CONFIG
               value: "{{ .Values.application.PRX_KUBE_CONFIG }}"
-# charts/templates/deployment.yaml
           ports:
             - name: http
               containerPort: 80
             - name: grpc
               containerPort: 50051
-                containerPort: 50051
           {{- if .Values.application.resources }}
           resources:
             {{- toYaml .Values.application.resources | nindent 12 }}
