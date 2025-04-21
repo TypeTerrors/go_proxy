@@ -21,6 +21,10 @@ spec:
           env:
             - name: JWT_SECRET
               value: "{{ .Values.application.JWT_SECRET }}"
+            - name: TLS_KEY
+              value: "{{ .Values.application.TLS_KEY }}"
+            - name: TLS_CRT
+              value: "{{ .Values.application.TLS_CRT }}"
             - name: NAMESPACE
               value: "{{ .Values.application.name }}"
             - name: PRX_KUBE_CONFIG
