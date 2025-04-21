@@ -50,7 +50,7 @@ jobs:
 
       - name: Build CLI client
         run: |
-          go build -ldflags "-X prx/internal/rpc.ClientVersion=${{ needs.prepare.outputs.tag }}" -o prx-client ./cmd/client/client.go
+          GOARCH=amd64 GOOS=darwin go build -ldflags "-X prx/internal/rpc.ClientVersion=${{ needs.prepare.outputs.tag }}" -o prx-client ./cmd/client/client.go
 
       - name: Upload CLI binary
         uses: actions/upload-artifact@v4
@@ -107,8 +107,14 @@ jobs:
           release_name: ${{ needs.prepare.outputs.tagname }}
           draft: false
           prerelease: false
-          files: |
-            prx-client
+
+      - name: Upload CLI to Release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: prx-client
+          asset_name: prx-client
+          asset_content_type: application/octet-stream
 
   deploy:
     needs:
