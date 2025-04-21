@@ -21,7 +21,7 @@ type grpcServer struct {
 
 // StartGRPC spins up the gRPC server on the given port.
 func (a *App) startGRPC() {
-	port := "50051"
+	port := ":50051"
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
 		a.Log.Fatal("gRPC listen error", "err", err)
