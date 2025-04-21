@@ -43,6 +43,11 @@ jobs:
         with:
           go-version: 1.24
 
+      - name: Install clipboard dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libxtst-dev libc6-dev
+
       - name: Build CLI client
         run: |
           go build -ldflags "-X prx/internal/rpc.ClientVersion=${{ needs.prepare.outputs.tag }}" -o prx-client ./cmd/client/client.go
