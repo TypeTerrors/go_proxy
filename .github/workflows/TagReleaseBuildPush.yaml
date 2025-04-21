@@ -298,10 +298,10 @@ jobs:
             --set application.host=${{ secrets.NAME }}.io \
             --set application.secretName=${{ secrets.NAME }}.io-secret \
             --set application.replicas=2 \
-            --set application.imagePullSecrets="${{ secrets.IMAGE_PULL_SECRET }}" \
-            --set application.JWT_SECRET="${{ secrets.JWT_SECRET }}" \
-            --set application.TLS_CRT=$TLS_CRT_B64 \
-            --set application.TLS_KEY=$TLS_KEY_B64 \
-            --set application.PRX_KUBE_CONFIG=$PRX_KUBE_CONFIG_B64 \
+            --set-string application.imagePullSecrets="${{ secrets.IMAGE_PULL_SECRET }}" \
+            --set-string application.JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+            --set-string application.TLS_CRT="${{ steps.encode_tls_key.outputs.TLS_CRT_B64 }}" \
+            --set-string application.TLS_KEY="${{ steps.encode_tls_key.outputs.TLS_KEY_B64 }}" \
+            --set-string application.PRX_KUBE_CONFIG="${{ steps.encode_kubeconfig.outputs.kubeconfig_b64 }}" \
             --set global.image.repository=ghcr.io/typeterrors/go_proxy \
             --set global.image.tag=${{ needs.prepare.outputs.tag }}

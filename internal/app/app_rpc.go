@@ -77,7 +77,7 @@ func (s *grpcServer) authInterceptor(
 	s.app.Log.Info("RPC incoming request", "req", req)
 
 	md, _ := metadata.FromIncomingContext(ctx)
-	auth := md["Authorization"]
+	auth := md["authorization"]
 	if len(auth) == 0 {
 		return nil, status.Errorf(codes.Unauthenticated, "authorization required")
 	}
