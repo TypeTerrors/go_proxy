@@ -113,12 +113,21 @@ func Run(args []string) {
 		}
 		if subcmd == "add" {
 			_, err = client.Add(ctx, req)
+			if err != nil {
+				log.Error("Error adding redirection record", "err", err)
+			}
 		} else {
 			_, err = client.Update(ctx, req)
+			if err != nil {
+				log.Error("Error updating redirection record", "err", err)
+			}
 		}
 
 	case "delete":
 		_, err = client.Delete(ctx, &pb.DeleteRequest{From: *from})
+		if err != nil {
+			log.Error("Error deleting redirection record", "err", err)
+		}
 
 	case "list":
 		resp, err := client.List(ctx, &pb.ListRequest{})
@@ -126,11 +135,15 @@ func Run(args []string) {
 			for _, r := range resp.Records {
 				log.Infof("%s -> %s\n", r.From, r.To)
 			}
+		} else {
+			log.Error("Error retrieving list of redirection records:", "err", err)
+		}
+		if len(resp.Records) < 1 {
+			log.Info("No records found")
 		}
 	}
 
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Info("OK")
 }

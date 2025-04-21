@@ -45,6 +45,8 @@ func (s *grpcServer) authInterceptor(
 	handler grpc.UnaryHandler,
 ) (interface{}, error) {
 
+	s.app.Log.Info("RPC incoming request", "req", req)
+
 	md, _ := metadata.FromIncomingContext(ctx)
 	auth := md["Authorization"]
 	if len(auth) == 0 {
@@ -59,6 +61,8 @@ func (s *grpcServer) authInterceptor(
 
 func (s *grpcServer) Add(ctx context.Context, req *pb.ProxyRequest) (*pb.Empty, error) {
 
+	s.app.Log.Info("RPC add new request", "req", req)
+
 	err := s.app.Kube.AddNewProxy(models.AddNewProxy{
 		From: req.From, To: req.To, Cert: req.Cert, Key: req.Key,
 	}, s.app.namespace, s.app.name)
@@ -70,6 +74,8 @@ func (s *grpcServer) Add(ctx context.Context, req *pb.ProxyRequest) (*pb.Empty, 
 }
 
 func (s *grpcServer) Update(ctx context.Context, req *pb.ProxyRequest) (*pb.Empty, error) {
+
+	s.app.Log.Info("RPC update request", "req", req)
 
 	if err := s.app.Kube.DeleteProxy(s.app.namespace, req.From); err != nil {
 		return nil, err
@@ -86,6 +92,8 @@ func (s *grpcServer) Update(ctx context.Context, req *pb.ProxyRequest) (*pb.Empt
 
 func (s *grpcServer) Delete(ctx context.Context, req *pb.DeleteRequest) (*pb.Empty, error) {
 
+	s.app.Log.Info("RPC delete request", "req", req)
+
 	if err := s.app.Kube.DeleteProxy(s.app.namespace, req.From); err != nil {
 		return nil, err
 	}
@@ -94,6 +102,8 @@ func (s *grpcServer) Delete(ctx context.Context, req *pb.DeleteRequest) (*pb.Emp
 }
 
 func (s *grpcServer) List(ctx context.Context, _ *pb.ListRequest) (*pb.ListResponse, error) {
+
+	s.app.Log.Info("RPC list request")
 
 	records, _ := s.app.getAllRedirectionRecords()
 	resp := &pb.ListResponse{}
