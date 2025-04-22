@@ -113,7 +113,7 @@ func (k Kube) AddNewProxy(anyBody any, namespace, name string) error {
 	}
 
 	k.log.Info("Created secret", "name", secretName, "from", body.From, "to", body.To)
-
+	ingressClassName := "nginx"
 	ingressName := body.From + "-ingress"
 	ingress := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
@@ -124,6 +124,7 @@ func (k Kube) AddNewProxy(anyBody any, namespace, name string) error {
 			Namespace: namespace,
 		},
 		Spec: networkingv1.IngressSpec{
+			IngressClassName: &ingressClassName,
 			TLS: []networkingv1.IngressTLS{
 				{
 					Hosts:      []string{body.From},
