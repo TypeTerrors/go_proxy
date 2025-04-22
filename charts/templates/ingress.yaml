@@ -26,9 +26,13 @@ metadata:
   name: "{{ .Values.application.name }}-grpc"
   annotations:
     nginx.ingress.kubernetes.io/ssl-passthrough: "true"  
-    nginx.ingress.kubernetes.io/backend-protocol: "GRPCS"
 spec:
   ingressClassName: nginx   
+  tls:
+    - hosts:
+        - rpc.{{ .Values.application.host }}
+      secretName: {{ .Values.application.secretName }}
+
   rules:
     - host: rpc.{{ .Values.application.host }}
       http:
