@@ -44,5 +44,4 @@ spec:
               service:
                 name: {{ .Values.application.name }}
                 port:
-                  number: 50051
                   name: grpc
