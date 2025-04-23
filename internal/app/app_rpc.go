@@ -69,8 +69,6 @@ func (s *grpcServer) authInterceptor(
 	handler grpc.UnaryHandler,
 ) (interface{}, error) {
 
-	s.app.Log.Info("RPC incoming request", "req", req)
-
 	md, _ := metadata.FromIncomingContext(ctx)
 	auth := md["authorization"]
 	if len(auth) == 0 {
