@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -30,7 +31,7 @@ func Run(args []string) {
 	case "add", "update":
 		fs := flag.NewFlagSet(subcmd, flag.ExitOnError)
 		addr = fs.String("addr", os.Getenv("PROXY_HOST"), "gRPC server address")
-		token = fs.String("token", "", "JWT bearer token")
+		token = fs.String("token", os.Getenv("PROXY_TOKEN"), "JWT bearer token")
 		from = fs.String("from", "", "source host")
 		to = fs.String("to", "", "target URL")
 		certPath = fs.String("cert", "", "path to TLS cert")
@@ -39,13 +40,13 @@ func Run(args []string) {
 	case "delete":
 		fs := flag.NewFlagSet(subcmd, flag.ExitOnError)
 		addr = fs.String("addr", os.Getenv("PROXY_HOST"), "gRPC server address")
-		token = fs.String("token", "", "JWT bearer token")
+		token = fs.String("token", os.Getenv("PROXY_TOKEN"), "JWT bearer token")
 		from = fs.String("from", "", "source host")
 		fs.Parse(args[1:])
 	case "list":
 		fs := flag.NewFlagSet(subcmd, flag.ExitOnError)
 		addr = fs.String("addr", os.Getenv("PROXY_HOST"), "gRPC server address")
-		token = fs.String("token", "", "JWT bearer token")
+		token = fs.String("token", os.Getenv("PROXY_TOKEN"), "JWT bearer token")
 		fs.Parse(args[1:])
 	case "help":
 		PrintHelp()
@@ -107,6 +108,13 @@ func Run(args []string) {
 	ctx, cancel := context.WithTimeout(baseCtx, 5*time.Second)
 	defer cancel()
 
+	successStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("34"))
+	infoStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("63"))
+
 	switch strings.ToLower(subcmd) {
 	case "add", "update":
 		certBytes, _ := os.ReadFile(*certPath)
@@ -117,23 +125,37 @@ func Run(args []string) {
 			Cert: base64.StdEncoding.EncodeToString(certBytes),
 			Key:  base64.StdEncoding.EncodeToString(keyBytes),
 		}
+		var action string
 		if subcmd == "add" {
 			_, err = client.Add(ctx, req)
-			if err != nil {
-				log.Error("Error adding redirection record", "err", err)
-			}
+			action = "Added"
 		} else {
 			_, err = client.Update(ctx, req)
-			if err != nil {
-				log.Error("Error updating redirection record", "err", err)
-			}
+			action = "Updated"
 		}
+		if err != nil {
+			log.Fatal(fmt.Sprintf("%s redirection record failed:", action), "err", err)
+		}
+		fmt.Println("")
+		header := fmt.Sprintf("%s redirection record:", action)
+		fmt.Println(infoStyle.Render(header))
+		fmt.Printf("%s  %s\n",
+			lipgloss.NewStyle().Bold(true).Render("FROM:"), *from)
+		fmt.Printf("%s  %s\n\n",
+			lipgloss.NewStyle().Bold(true).Render("TO:"), *to)
+		fmt.Println("")
 
 	case "delete":
 		_, err = client.Delete(ctx, &pb.DeleteRequest{From: *from})
 		if err != nil {
-			log.Error("Error deleting redirection record", "err", err)
+			log.Fatal("Delete redirection record failed:", "err", err)
 		}
+		fmt.Println("")
+		header := "Deleted redirection record:"
+		fmt.Println(successStyle.Render(header))
+		fmt.Printf("%s  %s\n\n",
+			lipgloss.NewStyle().Bold(true).Render("FROM:"), *from)
+		fmt.Println("")
 
 	case "list":
 		resp, err := client.List(ctx, &pb.ListRequest{})
@@ -143,9 +165,38 @@ func Run(args []string) {
 		if len(resp.Records) < 1 {
 			log.Info("No records found")
 		} else {
+			maxFrom, maxTo := len("FROM"), len("TO")
 			for _, r := range resp.Records {
-				log.Infof("%s -> %s\n", r.From, r.To)
+				if len(r.From) > maxFrom {
+					maxFrom = len(r.From)
+				}
+				if len(r.To) > maxTo {
+					maxTo = len(r.To)
+				}
 			}
+
+			headerStyle := lipgloss.NewStyle().
+				Bold(true).
+				Foreground(lipgloss.Color("63"))
+			cellStyle := lipgloss.NewStyle().
+				PaddingRight(1)
+			fmt.Println("")
+			fmt.Printf("%s  %s\n",
+				headerStyle.Render(fmt.Sprintf("%-*s", maxFrom, "FROM")),
+				headerStyle.Render(fmt.Sprintf("%-*s", maxTo, "TO")),
+			)
+
+			sepFrom := strings.Repeat("─", maxFrom)
+			sepTo := strings.Repeat("─", maxTo)
+			fmt.Printf("%s  %s\n", sepFrom, sepTo)
+
+			for _, r := range resp.Records {
+				fmt.Printf("%s  %s\n",
+					cellStyle.Render(fmt.Sprintf("%-*s", maxFrom, r.From)),
+					cellStyle.Render(fmt.Sprintf("%-*s", maxTo, r.To)),
+				)
+			}
+			fmt.Println("")
 		}
 	}
 
