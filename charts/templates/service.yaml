@@ -1,4 +1,3 @@
-
 ---
 apiVersion: v1
 kind: Service
@@ -16,4 +15,4 @@ spec:
     - name: grpc
       protocol: TCP
       port: 50051
-      targetPort: grpc
+      targetPort: 50051

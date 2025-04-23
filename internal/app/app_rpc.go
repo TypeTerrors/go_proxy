@@ -2,10 +2,7 @@ package app
 
 import (
 	"context"
-	"crypto/tls"
-	"encoding/base64"
 	"net"
-	"os"
 	"strings"
 
 	"prx/internal/models"
@@ -13,7 +10,6 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
@@ -31,32 +27,31 @@ func (a *App) startGRPC() {
 		a.Log.Fatal("gRPC listen error", "err", err)
 	}
 
-	// TLS cert and key are provided as base64‑encoded env vars.
-	crtB64 := os.Getenv("TLS_CRT")
-	keyB64 := os.Getenv("TLS_KEY")
-	if crtB64 == "" || keyB64 == "" {
-		a.Log.Fatal("TLS_CRT or TLS_KEY environment variable not set")
-	}
+	// // TLS cert and key are provided as base64‑encoded env vars.
+	// crtB64 := os.Getenv("TLS_CRT")
+	// keyB64 := os.Getenv("TLS_KEY")
+	// if crtB64 == "" || keyB64 == "" {
+	// 	a.Log.Fatal("TLS_CRT or TLS_KEY environment variable not set")
+	// }
 
-	crtPEM, err := base64.StdEncoding.DecodeString(crtB64)
-	if err != nil {
-		a.Log.Fatal("failed to decode TLS_CRT:", "err", err)
-	}
-	keyPEM, err := base64.StdEncoding.DecodeString(keyB64)
-	if err != nil {
-		a.Log.Fatal("failed to decode TLS_KEY:", "err", err)
-	}
+	// crtPEM, err := base64.StdEncoding.DecodeString(crtB64)
+	// if err != nil {
+	// 	a.Log.Fatal("failed to decode TLS_CRT:", "err", err)
+	// }
+	// keyPEM, err := base64.StdEncoding.DecodeString(keyB64)
+	// if err != nil {
+	// 	a.Log.Fatal("failed to decode TLS_KEY:", "err", err)
+	// }
 
-	pair, err := tls.X509KeyPair(crtPEM, keyPEM)
-	if err != nil {
-		a.Log.Fatal("failed to load X509 key pair:", "err", err)
-	}
-	creds := credentials.NewTLS(&tls.Config{
-		Certificates: []tls.Certificate{pair},
-	})
-	
+	// pair, err := tls.X509KeyPair(crtPEM, keyPEM)
+	// if err != nil {
+	// 	a.Log.Fatal("failed to load X509 key pair:", "err", err)
+	// }
+	// creds := credentials.NewTLS(&tls.Config{
+	// 	Certificates: []tls.Certificate{pair},
+	// })
+
 	srv := grpc.NewServer(
-		grpc.Creds(creds),
 		grpc.UnaryInterceptor((&grpcServer{app: a}).authInterceptor),
 	)
 

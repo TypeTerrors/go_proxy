@@ -25,14 +25,15 @@ kind: Ingress
 metadata:
   name: "{{ .Values.application.name }}-grpc"
   annotations:
-    nginx.ingress.kubernetes.io/ssl-passthrough: "true"  
+    nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
 spec:
   ingressClassName: nginx   
   tls:
     - hosts:
         - rpc.{{ .Values.application.host }}
       secretName: {{ .Values.application.secretName }}
-
   rules:
     - host: rpc.{{ .Values.application.host }}
       http:
