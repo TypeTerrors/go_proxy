@@ -120,15 +120,24 @@ func (a *App) setRedirectRecords(from, to string) {
 
 func (a *App) setRedirectRecordsInMemory(from, to string) {
 	a.mu.Lock()
-	a.RedirectRecords[from] = to
+	if _, ok := a.RedirectRecords[from]; !ok {
+		a.RedirectRecords[from] = to
+	}
 	a.mu.Unlock()
 }
 
 func (a *App) setRedirectRecordsInCluster(from, to string) error {
-	err := a.Kube.AddProxyMapping(a.namespace, a.name, services.ProxyMapping{
-		From: from,
-		To:   to,
-	})
+	list, err := a.Kube.GetProxyMappings(a.namespace, a.name)
+	if err != nil {
+		return err
+	}
+
+	if _, ok := list[from]; !ok {
+		err = a.Kube.AddProxyMapping(a.namespace, a.name, services.ProxyMapping{
+			From: from,
+			To:   to,
+		})
+	}
 	return err
 }
 
