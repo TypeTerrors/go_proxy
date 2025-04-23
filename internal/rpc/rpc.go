@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/base64"
 	"flag"
 	"fmt"
@@ -11,9 +12,8 @@ import (
 	"time"
 
 	"github.com/charmbracelet/log"
-
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -89,9 +89,15 @@ func Run(args []string) {
 		os.Exit(1)
 	}
 
-	conn, err := grpc.NewClient(*addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	host := strings.Split(*addr, ":")[0]
+	tlsCfg := &tls.Config{
+		InsecureSkipVerify: true,
+		ServerName:         host,
+	}
+	creds := credentials.NewTLS(tlsCfg)
+	conn, err := grpc.NewClient(*addr, grpc.WithTransportCredentials(creds))
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("failed to dial gRPC server:", "err", err)
 	}
 	defer conn.Close()
 
@@ -131,15 +137,15 @@ func Run(args []string) {
 
 	case "list":
 		resp, err := client.List(ctx, &pb.ListRequest{})
-		if err == nil {
-			for _, r := range resp.Records {
-				log.Infof("%s -> %s\n", r.From, r.To)
-			}
-		} else {
-			log.Error("Error retrieving list of redirection records:", "err", err)
+		if err != nil {
+			log.Fatal("Error retrieving list of redirection records:", "err", err)
 		}
 		if len(resp.Records) < 1 {
 			log.Info("No records found")
+		} else {
+			for _, r := range resp.Records {
+				log.Infof("%s -> %s\n", r.From, r.To)
+			}
 		}
 	}
 
