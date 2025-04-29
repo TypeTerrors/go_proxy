@@ -1,11 +1,14 @@
 package app
 
 import (
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"prx/internal/models"
+	"prx/internal/pkg"
 	"prx/internal/utils"
 	"time"
 )
@@ -35,6 +38,34 @@ func (a *App) HandleAddNewProxy(w http.ResponseWriter, req *http.Request) {
 	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
 		a.Response(w, a.Err("request body decode error %s", err), http.StatusInternalServerError)
 		return
+	}
+
+	if body.From == "" || body.To == "" {
+		a.Response(w, a.Err("validation error %s", fmt.Errorf("redirection records values must not be blank")), http.StatusInternalServerError)
+		return
+	}
+
+	if body.Cert == "" || body.Key == "" {
+		selfsigned, err := pkg.GenerateSelfSignedCertificate(body.From)
+		if err != nil {
+			a.Response(w, a.Err("certificate error %s", err), http.StatusInternalServerError)
+		}
+
+		err = a.Kube.AddNewProxy(models.AddNewProxy{
+			From: body.From,
+			To:   body.To,
+			Cert: base64.StdEncoding.EncodeToString(selfsigned.Crt),
+			Key:  base64.StdEncoding.EncodeToString(selfsigned.Key),
+		}, a.namespace, a.name)
+
+		if err != nil {
+			a.Response(w, a.Err("error adding new proxy"), http.StatusInternalServerError)
+			return
+		}
+
+		a.setRedirectRecords(body.From, body.To)
+
+		a.Response(w, nil, http.StatusCreated)
 	}
 
 	if err := utils.ValidateFields(body); err != "" {
