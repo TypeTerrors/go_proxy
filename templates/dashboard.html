@@ -1,0 +1,43 @@
+{{define "dashboard.html"}}{{template "layout" .}}{{end}}
+{{define "content"}}
+<h1>Dashboard</h1>
+{{if .Error}}<p class="notice">{{.Error}}</p>{{end}}
+
+<h2>Add/Update Mapping</h2>
+<form method="post" action="/dashboard/add">
+  <label for="from">From (host)</label>
+  <input id="from" name="from" type="text" placeholder="example.com">
+  <label for="to">To (URL)</label>
+  <input id="to" name="to" type="text" placeholder="https://backend:8080">
+  <label for="cert">Cert (optional)</label>
+  <textarea id="cert" name="cert" rows="3"></textarea>
+  <label for="key">Key (optional)</label>
+  <textarea id="key" name="key" rows="3"></textarea>
+  <button class="btn" type="submit">Add</button>
+</form>
+
+<h2>Existing</h2>
+<table>
+  <thead><tr><th>From</th><th>To</th><th>Actions</th></tr></thead>
+  <tbody>
+    {{range .Records}}
+    <tr>
+      <td>{{.From}}</td>
+      <td>{{.To}}</td>
+      <td>
+        <form style="display:inline" method="post" action="/dashboard/patch">
+          <input type="hidden" name="from" value="{{.From}}">
+          <input type="hidden" name="to" value="{{.To}}">
+          <button class="btn" type="submit">Patch</button>
+        </form>
+        <button class="btn danger" onclick="confirmDelete('{{.From}}')">Delete</button>
+      </td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+
+<form id="del-form" method="post" action="/dashboard/delete" style="display:none">
+  <input id="del-from" type="hidden" name="from" value="">
+</form>
+{{end}}

@@ -22,9 +22,11 @@ func (a *App) startApi() {
 
 func (a *App) CreateRoutes() http.Handler {
 	mux := http.NewServeMux()
+	// UI routes mounted explicitly while keeping proxy at "/"
 	mux.Handle("/", a.proxyRoutes())
 	mux.Handle("/api/", a.apiRoutes())
-	return a.LoggingMiddleware(mux)
+	mux.Handle("/admin/", a.adminRoutes())
+	return a.LoggingMiddleware(a.UILoginMiddleware(mux))
 }
 
 func (a *App) proxyRoutes() http.Handler {

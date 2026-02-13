@@ -1,0 +1,10 @@
+{{define "login.html"}}{{template "layout" .}}{{end}}
+{{define "content"}}
+<h1>Login</h1>
+{{if .Error}}<p class="notice">{{.Error}}</p>{{end}}
+<form method="post" action="/login">
+  <label for="token">JWT</label>
+  <textarea id="token" name="token" rows="6" placeholder="Paste token here"></textarea>
+  <button class="btn" type="submit">Login</button>
+</form>
+{{end}}

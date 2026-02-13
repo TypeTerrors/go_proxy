@@ -199,6 +199,16 @@ We use GitHub Actions to build, tag, push Docker image and deploy via Helm.
 
 ---
 
+## Web UI
+
+- Pages: `/` (front), `/login` (paste JWT), `/dashboard` (manage records)
+- Auth: paste an existing JWT; it is stored in an HttpOnly cookie `prx_auth` (SameSite=Lax)
+- Env:
+  - `PRX_UI_COOKIE_MAX_AGE` seconds (default 43200 = 12h)
+  - `PRX_UI_COOKIE_SECURE` true to force Secure cookies (auto when X-Forwarded-Proto=https)
+
+---
+
 ## GitHub Workflow
 
 The `BuildPushDeploy` action triggers on PR to `main`/`dev`:

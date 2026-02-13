@@ -1,0 +1,39 @@
+{{define "layout"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>go_proxy</title>
+  <style>
+    body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:2rem;line-height:1.4}
+    header,footer{margin-bottom:1rem}
+    form{margin:1rem 0}
+    input,textarea{width:100%;max-width:28rem;padding:.5rem;margin:.25rem 0}
+    table{border-collapse:collapse;width:100%;max-width:48rem}
+    th,td{border:1px solid #ddd;padding:.5rem;text-align:left}
+    .row{display:flex;gap:1rem;flex-wrap:wrap}
+    .btn{display:inline-block;padding:.4rem .8rem;border:1px solid #333;background:#eee;cursor:pointer}
+    .danger{background:#fdd;border-color:#c00}
+    .notice{color:#c00}
+  </style>
+  <script>
+    function confirmDelete(from) {
+      if (confirm("Delete mapping for " + from + "?")) {
+        document.getElementById("del-from").value = from;
+        document.getElementById("del-form").submit();
+      }
+    }
+  </script>
+</head>
+<body>
+  <header>
+    <a href="/">Home</a> |
+    <a href="/dashboard">Dashboard</a>
+    <form style="display:inline" method="post" action="/logout"><button class="btn danger" type="submit">Logout</button></form>
+  </header>
+  {{template "content" .}}
+  <footer><small>go_proxy UI</small></footer>
+</body>
+</html>
+{{end}}
